@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Circle Display</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+        }
+	#circle-container {
+            position: relative;
+            width: calc(100vmin - 20px); /* Ensure LEDs fit within the view */
+            height: calc(100vmin - 20px); /* Reduce size to fit completely */
+        }
+        .led {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="circle-container"></div>
+    <script>
+        const DATA_URL = 'http://example.com/led-data';
+        const NUMBER_LEDs = 100;
+        const LED_SPACING = 2;
+        const UPDATE_FREQUENCY = 20;
+
+        const container = document.getElementById('circle-container');
+        const radius = Math.min(container.offsetWidth, container.offsetHeight) / 2 - LED_SPACING;
+
+        function createLEDs() {
+            for (let i = 0; i < NUMBER_LEDs; i++) {
+                const led = document.createElement('div');
+                led.className = 'led';
+                const angle = ((i / NUMBER_LEDs) * 2 * Math.PI) - (Math.PI / 2); // Adjust angle to start at top
+                const x = Math.cos(angle) * radius + radius + LED_SPACING;
+                const y = Math.sin(angle) * radius + radius + LED_SPACING;
+                led.style.transform = `translate(${x}px, ${y}px)`;
+                container.appendChild(led);
+            }
+        }
+
+        function generateGradientData(index) {
+            let data = '';
+            for (let i = 0; i < NUMBER_LEDs; i++) {
+                const ratio = Math.abs(((i + index) % NUMBER_LEDs) / NUMBER_LEDs * 2 - 1);
+                const r = Math.floor(255 * ratio).toString(16).padStart(2, '0');
+                const g = Math.floor(255 * (1 - ratio)).toString(16).padStart(2, '0');
+                const b = '00'; // Keep blue constant for a red-green gradient
+                data += `${r}${g}${b}`;
+            }
+            return data;
+        }
+
+        let index = 0;
+        async function updateLEDs() {
+            try {
+                // const response = await fetch(DATA_URL);
+                // const data = await response.text();
+                index += 1;
+                const data = generateGradientData(index);
+                const leds = document.querySelectorAll('.led');
+                for (let i = 0; i < NUMBER_LEDs; i++) {
+                    leds[i].style.backgroundColor = `#${data.slice(i * 6, i * 6 + 6)}`;
+                }
+            } catch (error) {
+                console.error('Error fetching LED data:', error);
+            }
+        }
+
+        createLEDs();
+        setInterval(updateLEDs, 1000 / UPDATE_FREQUENCY);
+    </script>
+</body>
+</html>

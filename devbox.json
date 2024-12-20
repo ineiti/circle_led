@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.10.7/.schema/devbox.schema.json",
+  "packages": {
+    "darwin.apple_sdk.frameworks.CoreServices": {
+      "platforms": ["x86_64-darwin", "aarch64-darwin"]
+    },
+    "darwin.apple_sdk.frameworks.SystemConfiguration": {
+      "platforms": ["x86_64-darwin", "aarch64-darwin"]
+    },
+    "darwin.apple_sdk.frameworks.Security": {
+      "platforms": ["x86_64-darwin", "aarch64-darwin"]
+    },
+    "which":          "latest",
+    "rustup":         "latest",
+    "libiconv":       "latest",
+    "git":            "latest",
+    "less":           "latest",
+    "vim":            "latest",
+    "openssh":        "latest",
+    "nodejs":         "18",
+    "cargo-binstall": "latest"
+  },
+  "shell": {
+    "init_hook": [
+      "projectDir=$PWD",
+      "echo $projectDir",
+      "rustupHomeDir=\"$projectDir\"/.rustup",
+      "mkdir -p $rustupHomeDir",
+      "export RUSTUP_HOME=$rustupHomeDir",
+      "export LIBRARY_PATH=$LIBRARY_PATH:\"$projectDir/nix/profile/default/lib\"",
+      "rustup default stable",
+      "cargo fetch",
+      "alias ls='ls --color'"
+    ],
+    "scripts": {
+      "test": [
+        "make cargo_test"
+      ]
+    }
+  },
+  "env": {
+    "LS_COLORS": "di=33"
+  }
+}
