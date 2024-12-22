@@ -1,6 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.10.7/.schema/devbox.schema.json",
   "packages": {
+    "which":    "latest",
+    "rustup":   "latest",
+    "libiconv": "latest",
     "darwin.apple_sdk.frameworks.CoreServices": {
       "platforms": ["x86_64-darwin", "aarch64-darwin"]
     },
@@ -10,35 +13,32 @@
     "darwin.apple_sdk.frameworks.Security": {
       "platforms": ["x86_64-darwin", "aarch64-darwin"]
     },
-    "which":          "latest",
-    "rustup":         "latest",
-    "libiconv":       "latest",
     "git":            "latest",
     "less":           "latest",
     "vim":            "latest",
     "openssh":        "latest",
+    "trunk":          "latest",
+    "wasm-pack":      "latest",
     "nodejs":         "18",
+    "procps":         "latest",
+    "vscode":         "latest",
     "cargo-binstall": "latest"
   },
   "shell": {
     "init_hook": [
-      "projectDir=$PWD",
-      "echo $projectDir",
-      "rustupHomeDir=\"$projectDir\"/.rustup",
-      "mkdir -p $rustupHomeDir",
-      "export RUSTUP_HOME=$rustupHomeDir",
-      "export LIBRARY_PATH=$LIBRARY_PATH:\"$projectDir/nix/profile/default/lib\"",
-      "rustup default stable",
-      "cargo fetch",
+      "if [ ! -d $RUSTUP_HOME/toolchains/stable* ]; then rustup default stable; fi",
+      "if [ ! -d $RUSTUP_HOME/toolchains/stable*/lib/rustlib/wasm32-unknown-unknown ]; then rustup target add wasm32-unknown-unknown; fi",
+      "test -f .devbox/bin/dx || cargo binstall -y --root=.devbox dioxus-cli",
       "alias ls='ls --color'"
     ],
     "scripts": {
-      "test": [
-        "make cargo_test"
+      "code": [
+        "Code --user-data-dir .vscode ."
       ]
     }
   },
   "env": {
-    "LS_COLORS": "di=33"
+    "LS_COLORS":        "di=33",
+    "CARGO_TARGET_DIR": "$PWD/.devbox/bin"
   }
 }

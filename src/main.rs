@@ -1,20 +1,39 @@
 use dioxus::prelude::*;
+use strum_macros::{Display, EnumString};
 
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
 enum Route {
-    #[layout(Navbar)]
     #[route("/")]
     Home {},
-    #[route("/blog/:id")]
-    Blog { id: i32 },
+    #[route("/play/:color")]
+    Play {color: PlayColor},
+    #[route("/display")]
+    Display {},
+    #[route("/:..route")]
+    PageNotFound { route: Vec<String> },
+}
+
+#[component]
+fn PageNotFound(route: Vec<String>) -> Element {
+    rsx! {
+        h1 { "Page not found" }
+        p { "We are terribly sorry, but the page you requested doesn't exist." }
+        pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
+    }
 }
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 
+mod server;
+
 fn main() {
-    dioxus::launch(App);
+    LaunchBuilder::new()
+        .with_context(server_only! {
+            server::Platform::new(100)
+        })
+        .launch(App);
 }
 
 #[component]
@@ -26,73 +45,90 @@ fn App() -> Element {
     }
 }
 
-#[component]
-pub fn Hero() -> Element {
-    rsx! {
-        div {
-            id: "hero",
-            div { id: "links",
-                a { href: "https://dioxuslabs.com/learn/0.6/", "📚 Learn Dioxus" }
-                a { href: "https://dioxuslabs.com/awesome", "🚀 Awesome Dioxus" }
-                a { href: "https://github.com/dioxus-community/", "📡 Community Libraries" }
-                a { href: "https://github.com/DioxusLabs/sdk", "⚙️ Dioxus Development Kit" }
-                a { href: "https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus", "💫 VSCode Extension" }
-                a { href: "https://discord.gg/XgGxMSkvUM", "👋 Community Discord" }
-            }
-        }
-    }
-}
-
 /// Home page
 #[component]
 fn Home() -> Element {
     rsx! {
-        Hero {}
-
-    }
-}
-
-/// Blog page
-#[component]
-pub fn Blog(id: i32) -> Element {
-    rsx! {
         div {
-            id: "blog",
-
-            // Content
-            h1 { "This is blog #{id}!" }
-            p { "In blog #{id}, we show how the Dioxus router works and how URL parameters can be passed as props to our route components." }
-
-            // Navigation links
-            Link {
-                to: Route::Blog { id: id - 1 },
-                "Previous"
+            Link {to: Route::Display{}, "Display"}
+        }
+        div {
+            id: "color-grid",
+            Link {to: Route::Play{color: PlayColor::Red},
+                class:"color-block", style:"background-color: #ff8888;",
+                "Rouge"
             }
-            span { " <---> " }
-            Link {
-                to: Route::Blog { id: id + 1 },
-                "Next"
+            Link {to: Route::Play{color: PlayColor::Blue},
+                class:"color-block", style:"background-color: #88ff88;",
+                 "Bleue"
+            }
+            Link {to: Route::Play{color: PlayColor::Green},
+                class:"color-block", style:"background-color: #8888ff;",
+                "Vert"
+            }
+            Link {to: Route::Play{color: PlayColor::Yellow},
+                class:"color-block", style:"background-color: #ffff88;",
+                "Jaune"
+            }
+            Link {to: Route::Play{color: PlayColor::Magenta},
+                class:"color-block", style:"background-color: #ff88ff;",
+                "Rose"
+            }
+            Link {to: Route::Play{color: PlayColor::Cyan},
+                class:"color-block", style:"background-color: #88ffff;",
+                "Cyan"
             }
         }
     }
 }
 
-/// Shared navbar component.
+#[derive(Display, EnumString, Clone, PartialEq, Debug)]
+pub enum PlayColor {
+    Red,
+    Green,
+    Blue,
+    Yellow,
+    Cyan,
+    Magenta,
+}
+
 #[component]
-fn Navbar() -> Element {
+pub fn Play(color: PlayColor) -> Element {
+    use_effect(move || {
+        document::eval(include_str!("../play.js"));
+    });
+
     rsx! {
         div {
-            id: "navbar",
-            Link {
-                to: Route::Home {},
-                "Home"
-            }
-            Link {
-                to: Route::Blog { id: 1 },
-                "Blog"
-            }
+            class: "centered-div",
+            div { id: "circle-container" }
         }
-
-        Outlet::<Route> {}
     }
+}
+
+#[component]
+pub fn Display() -> Element {
+    use_effect(move || {
+        document::eval(include_str!("../display.js"));
+    });
+
+    rsx! {
+        div {
+            class: "centered-div",
+            div { id: "circle-container" }
+        }
+    }
+}
+
+#[server(endpoint = "get_circle")]
+async fn get_circle() -> Result<String, ServerFnError> {
+    let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
+    Ok(plat.get_circle())
+}
+
+#[server(endpoint = "touch_led")]
+async fn touch_led(i: usize) -> Result<(), ServerFnError> {
+    let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
+    plat.touch_led(i);
+    Ok(())
 }
