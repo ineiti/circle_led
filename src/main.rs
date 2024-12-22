@@ -1,5 +1,5 @@
+use common::{Game, PlayColor};
 use dioxus::prelude::*;
-use strum_macros::{Display, EnumString};
 
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
@@ -26,12 +26,21 @@ fn PageNotFound(route: Vec<String>) -> Element {
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 
+mod common;
+
+#[cfg(feature = "server")]
+mod board;
+#[cfg(feature = "server")]
+mod display;
+#[cfg(feature = "server")]
+mod games;
+#[cfg(feature = "server")]
 mod server;
 
 fn main() {
     LaunchBuilder::new()
         .with_context(server_only! {
-            server::Platform::new(100)
+            server::Platform::new()
         })
         .launch(App);
 }
@@ -59,11 +68,11 @@ fn Home() -> Element {
                 "Rouge"
             }
             Link {to: Route::Play{color: PlayColor::Blue},
-                class:"color-block", style:"background-color: #88ff88;",
+                class:"color-block", style:"background-color: #8888ff;",
                  "Bleue"
             }
             Link {to: Route::Play{color: PlayColor::Green},
-                class:"color-block", style:"background-color: #8888ff;",
+                class:"color-block", style:"background-color: #88ff88;",
                 "Vert"
             }
             Link {to: Route::Play{color: PlayColor::Yellow},
@@ -82,20 +91,13 @@ fn Home() -> Element {
     }
 }
 
-#[derive(Display, EnumString, Clone, PartialEq, Debug)]
-pub enum PlayColor {
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    Cyan,
-    Magenta,
-}
-
 #[component]
 pub fn Play(color: PlayColor) -> Element {
     use_effect(move || {
-        document::eval(include_str!("../play.js"));
+        let script = include_str!("../play.js").to_string() + &format!("playerLED('{color}')");
+        document::eval(&script);
+        // document::eval("console.log('Im here');");
+        // document::eval("setTimeout( () => { document.location = '/' }, 1000 );");
     });
 
     rsx! {
@@ -120,15 +122,39 @@ pub fn Display() -> Element {
     }
 }
 
+#[server(endpoint = "game_state")]
+async fn game_state() -> Result<Game, ServerFnError> {
+    print!("Game_state");
+    let FromContext(plat): FromContext<server::Platform> = extract().await?;
+    Ok(plat.game_state())
+}
+
+#[server(endpoint = "game_join")]
+async fn game_join(c: PlayColor) -> Result<(), ServerFnError> {
+    print!("Game_join");
+    let FromContext(plat): FromContext<server::Platform> = extract().await?;
+    Ok(plat.game_join(c))
+}
+
 #[server(endpoint = "get_circle")]
 async fn get_circle() -> Result<String, ServerFnError> {
+    print!("get_circle");
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.get_circle())
 }
 
-#[server(endpoint = "touch_led")]
-async fn touch_led(i: usize) -> Result<(), ServerFnError> {
+#[server(endpoint = "player_pos")]
+async fn player_pos(i: usize, c: PlayColor) -> Result<(), ServerFnError> {
+    print!("player_pos");
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    plat.touch_led(i);
+    plat.player_pos(i, c);
+    Ok(())
+}
+
+#[server(endpoint = "player_click")]
+async fn player_click(c: PlayColor) -> Result<(), ServerFnError> {
+    print!("player_click");
+    let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
+    plat.player_click(c);
     Ok(())
 }

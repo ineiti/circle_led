@@ -1,37 +1,60 @@
-const DATA_URL = '/api/touch_led';
+const DATA_URL_POS = '/api/player_pos';
+const DATA_URL_CLICK = '/api/player_click';
 const NUMBER_LEDs = 100;
 const LED_SPACING = 2;
 const UPDATE_FREQUENCY = 20;
-const COLOR_LED = '#ff8888';
 
 const container = document.getElementById('circle-container');
 const radius = Math.min(container.offsetWidth, container.offsetHeight) / 2 - LED_SPACING;
 
 let leds = [];
+let PLAYER_LED = 'Red';
+let player;
+
+function ledDiv(x, y, name) {
+    const led = document.createElement('div');
+    led.className = name;
+    led.style.transform = `translate(${x}px, ${y}px)`;
+    container.append(led);
+    return led;
+}
 
 function createLEDs() {
     for (let i = 0; i < NUMBER_LEDs; i++) {
-        const led = document.createElement('div');
-        led.className = 'led';
         const angle = ((i / NUMBER_LEDs) * 2 * Math.PI) - (Math.PI / 2);
         const x = Math.cos(angle) * radius + radius + LED_SPACING;
         const y = Math.sin(angle) * radius + radius + LED_SPACING;
-        led.style.transform = `translate(${x}px, ${y}px)`; container.appendChild(led); leds.push({ element: led, x, y });
+        const led = ledDiv(x, y, 'led');
+        leds.push({ element: led, x, y });
     }
 }
 
 async function highlightLED(index) {
-    // console.log("highlight" + index); 
-    await fetch(DATA_URL, {
+    await fetch(DATA_URL_POS, {
         method: "POST",
-        body: `i=${index}`,
+        body: `i=${index}&c=${PLAYER_LED}`,
         headers: {
             "Content-type": "application/x-www-form-urlencoded"
         }
     });
     leds.forEach((led, i) => {
-        led.element.style.backgroundColor = i === index ? COLOR_LED : 'white';
+        led.element.style.backgroundColor = i === index ? PLAYER_LED : 'white';
     });
+}
+
+function playerLED(color) {
+    player = ledDiv(radius * 0.95, radius * 0.95, 'ledPlayer');
+    player.style.backgroundColor = color;
+    player.onclick = async () => {
+        await fetch(DATA_URL_CLICK, {
+            method: "POST",
+            body: `c=${PLAYER_LED}`,
+            headers: {
+                "Content-type": "application/x-www-form-urlencoded"
+            }
+        });
+    };
+    PLAYER_LED = color;
 }
 
 function getClosestLED(x, y) {

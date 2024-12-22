@@ -115,3 +115,11 @@ html {
     border-radius: 50%;
     background-color: white;
 }
+
+.ledPlayer {
+    position: absolute;
+    width: 10%;
+    height: 10%;
+    border-radius: 50%;
+    background-color: white;
+}

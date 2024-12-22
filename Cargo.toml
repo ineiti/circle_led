@@ -13,12 +13,14 @@ serde = "1.0.216"
 strum = "0.26.3"
 strum_macros = "0.26.4"
 
+rand = { version = "0.8.5", optional = true }
+
 [features]
 default = ["web"]
 web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile"]
-server = ["dioxus/server"]
+server = ["dioxus/server", "dep:rand"]
 ssr = ["dioxus/ssr"]
 
 [profile]

@@ -500,6 +500,7 @@ version = "0.1.0"
 dependencies = [
  "dioxus",
  "dioxus-fullstack",
+ "rand 0.8.5",
  "serde",
  "strum",
  "strum_macros",

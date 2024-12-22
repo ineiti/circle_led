@@ -4,15 +4,22 @@ use std::{
     time::Duration,
 };
 
+use crate::{
+    board::{Board, CIRCLE_SIZE},
+    common::{Game, PlayColor},
+    display::Display,
+};
+
 #[derive(Clone, Debug)]
 pub struct Platform {
     inner: Arc<Mutex<PlatformInner>>,
 }
 
 impl Platform {
-    pub fn new(size: usize) -> Self {
+    pub fn new() -> Self {
+        println!("New Platform");
         let out = Self {
-            inner: Arc::new(Mutex::new(PlatformInner::new(size))),
+            inner: Arc::new(Mutex::new(PlatformInner::new())),
         };
 
         let inner = out.inner.clone();
@@ -29,113 +36,96 @@ impl Platform {
         self.inner.lock().unwrap().get_circle()
     }
 
-    pub fn touch_led(&mut self, i: usize) {
-        self.inner.lock().unwrap().touch_led(i);
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct LED {
-    red: u8,
-    green: u8,
-    blue: u8,
-}
-
-impl LED {
-    fn white() -> Self {
-        Self {
-            red: 0xff,
-            green: 0xff,
-            blue: 0xff,
-        }
+    pub fn player_pos(&mut self, i: usize, c: PlayColor) {
+        self.inner.lock().unwrap().player_pos(i, c);
     }
 
-    fn to_string(&self) -> String {
-        format!("{:02x}{:02x}{:02x}", self.red, self.green, self.blue)
+    pub fn player_click(&mut self, c: PlayColor) {
+        self.inner.lock().unwrap().player_click(c);
     }
 
-    fn mean(&self, other: Self) -> Self {
-        Self {
-            red: ((self.red as u16 + other.red as u16) / 2) as u8,
-            green: ((self.green as u16 + other.green as u16) / 2) as u8,
-            blue: ((self.blue as u16 + other.blue as u16) / 2) as u8,
-        }
+    pub fn game_state(&self) -> Game {
+        self.inner.lock().unwrap().game_state()
     }
 
-    fn from_color(color: u8) -> LED {
-        let hue = color / 64;
-        let bright = color % 64;
-        let (one, two) = (192 + bright, 255 - bright);
-        match hue {
-            0 => LED {
-                red: one,
-                green: two,
-                blue: 0,
-            },
-            1 => LED {
-                red: 0,
-                green: one,
-                blue: two,
-            },
-            2 => LED {
-                red: two,
-                green: 0,
-                blue: one,
-            },
-            _ => LED::white(),
-        }
+    pub fn game_join(&self, c: PlayColor) {
+        self.inner.lock().unwrap().game_join(c)
     }
 }
 
 #[derive(Debug)]
 struct PlatformInner {
-    leds: Vec<LED>,
-    color: u8,
+    display: Display,
+    board: Option<Board>,
+    game: Game,
+    countdown: usize,
 }
 
 impl PlatformInner {
-    fn new(size: usize) -> Self {
+    fn new() -> Self {
         Self {
-            leds: (0..size).map(|_| LED::white()).collect(),
-            color: 0,
+            display: Display::new(),
+            board: None,
+            game: Game::Idle,
+            countdown: 0,
         }
     }
 
     fn get_circle(&self) -> String {
-        self.leds
-            .iter()
-            .map(|l| l.to_string())
-            .collect::<Vec<String>>()
-            .join("")
+        self.display.get_circle()
     }
 
-    fn touch_led(&mut self, i: usize) {
-        if let Some(l) = self.leds.get_mut(i) {
-            *l = LED::from_color(self.color);
+    fn player_pos(&mut self, i: usize, c: PlayColor) {
+        self.board.as_mut().map(|b| b.player_pos(c, i));
+    }
+
+    fn player_click(&mut self, c: PlayColor) {
+        self.board.as_mut().map(|b| b.player_click(c));
+    }
+
+    fn game_state(&self) -> Game {
+        self.game.clone()
+    }
+
+    fn game_join(&mut self, c: PlayColor) {
+        match self.game.clone() {
+            Game::Idle => self.game = Game::Play(vec![c]),
+            Game::Signup(vec) => self.game = Game::Play(vec![vec, vec![c]].concat()),
+            _ => {}
         }
     }
 
-    fn neighbors(&self, i: usize) -> (LED, LED) {
-        let prev = if i > 0 {
-            self.leds[i - 1]
-        } else {
-            self.leds[self.leds.len() - 1]
-        };
-        let next = if i < self.leds.len() - 2 {
-            self.leds[i + 1]
-        } else {
-            self.leds[0]
-        };
-        (prev, next)
-    }
-
     fn tick(&mut self) {
-        self.leds = (0..self.leds.len())
-            .map(|i| self.neighbors(i))
-            .map(|(p, n)| p.mean(n))
-            .collect::<Vec<LED>>();
-        let first = self.leds.remove(0);
-        self.leds.push(first);
-        self.color = (self.color + 2) % 192;
+        match self.game.clone() {
+            Game::Idle => self.display.rainbow(),
+            Game::Signup(players) => {
+                if players.len() == 1 && self.countdown < CIRCLE_SIZE / 2 {
+                    self.countdown = CIRCLE_SIZE;
+                }
+                self.display.game_signup(players, self.countdown);
+            }
+            Game::Play(_) => {
+                self.display.rainbow();
+                if let Some(board) = self.board.as_mut() {
+                    self.game = board.tick(&mut self.display);
+                }
+            }
+            Game::Winner(winner) => {
+                self.display.game_winner(winner, self.countdown);
+            }
+            Game::Draw => {
+                self.display.game_draw(self.countdown);
+            }
+        }
+
+        if self.countdown > 0 {
+            self.countdown -= 1;
+            if self.countdown == 0 {
+                self.game = match self.game.clone() {
+                    Game::Signup(players) => Game::Play(players),
+                    _ => Game::Idle,
+                }
+            }
+        }
     }
 }

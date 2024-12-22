@@ -30,6 +30,6 @@
   },
   "env": {
     "LS_COLORS":        "di=33",
-    "PATH": "$PATH:.devbox/bin"
+    "PATH": "$PATH:$PWD/.devbox/bin"
   }
 }
