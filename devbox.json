@@ -13,15 +13,6 @@
     "darwin.apple_sdk.frameworks.Security": {
       "platforms": ["x86_64-darwin", "aarch64-darwin"]
     },
-    "git":            "latest",
-    "less":           "latest",
-    "vim":            "latest",
-    "openssh":        "latest",
-    "trunk":          "latest",
-    "wasm-pack":      "latest",
-    "nodejs":         "18",
-    "procps":         "latest",
-    "vscode":         "latest",
     "cargo-binstall": "latest"
   },
   "shell": {
@@ -39,6 +30,6 @@
   },
   "env": {
     "LS_COLORS":        "di=33",
-    "CARGO_TARGET_DIR": "$PWD/.devbox/bin"
+    "PATH": "$PATH:.devbox/bin"
   }
 }
