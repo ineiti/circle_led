@@ -3,6 +3,7 @@ use std::time::Duration;
 use async_std::task::sleep;
 use common::{Game, PlayColor, LED_COUNT};
 use dioxus::prelude::*;
+use tracing::Level;
 
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
@@ -37,10 +38,13 @@ mod display;
 mod server;
 
 fn main() {
+    dioxus_logger::init(Level::INFO).expect("failed to init logger");
+
     #[cfg(not(feature = "server"))]
-    server_fn::client::set_server_url(
-        &std::env::var("BASE_URL").unwrap_or("http://localhost:8080".into()),
-    );
+    {
+        let url = web_sys::window().unwrap().location().href().unwrap();
+        server_fn::client::set_server_url(url.leak());
+    }
 
     LaunchBuilder::new()
         .with_context(server_only! {
@@ -95,7 +99,9 @@ fn Home() -> Element {
 
 #[component]
 fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> Element {
-    current_player.set(None);
+    use_effect(move || {
+        current_player.set(None);
+    });
 
     let join = move |player: PlayColor| async move {
         if game_join(player).await.unwrap() {

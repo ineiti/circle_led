@@ -12,16 +12,17 @@ dioxus-fullstack = "0.6"
 serde = "1.0.216"
 strum = "0.26.3"
 strum_macros = "0.26.4"
-
-rand = { version = "0.8.5", optional = true }
 async-std = "1.13.0"
 tracing = "0.1.41"
+dioxus-logger = "0.6.1"
+
+rand = { version = "0.8.5", optional = true }
+web-sys = { version = "0.3.64", features = ["Window", "Location"], optional = true }
+
 
 [features]
 default = ["web"]
-web = ["dioxus/web"]
-desktop = ["dioxus/desktop"]
-mobile = ["dioxus/mobile"]
+web = ["dioxus/web", "dep:web-sys"]
 server = ["dioxus/server", "dep:rand"]
 ssr = ["dioxus/ssr"]
 
