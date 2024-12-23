@@ -10,5 +10,6 @@ FROM debian:bookworm-slim
 WORKDIR /web
 COPY --from=0 /web /web
 COPY --from=0 /etc/ssl /etc/ssl
+ENV IP=0.0.0.0
 
-ENTRYPOINT ["/web/server", "-vv"]
+ENTRYPOINT ["/web/server"]

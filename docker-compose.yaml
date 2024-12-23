@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  livequiz:
+    image: ghcr.io/ineiti/circle_led:latest
+    build: .
+    ports:
+      - 8080:8080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.livequiz.rule=Host(`circle.gasser.blue`)"
+      - "traefik.http.routers.livequiz.entrypoints=websecure"
+      - "traefik.http.routers.livequiz.tls.certresolver=myresolver"
+      - "traefik.http.services.livequiz.loadbalancer.server.port=8080"
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "traefik.http.routers.livequiz.service=livequiz"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external:
+      name: traefik_traefik
