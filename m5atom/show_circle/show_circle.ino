@@ -50,7 +50,7 @@ static uint8_t hex2u8(const char *c)
 
 static uint32_t str2pix(const char *c)
 {
-    return pixels.Color(hex2u8(c)>>4, hex2u8(c + 2)>>4, hex2u8(c + 4)>>4);
+    return pixels.Color(hex2u8(c) >> 4, hex2u8(c + 2) >> 4, hex2u8(c + 4) >> 4);
     // return pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4));
 }
 
@@ -61,20 +61,19 @@ void loop()
         led.setPixelColor(0, pixels.Color(0, 255, 0));
         led.show();
 
-        // Serial.print("[HTTP] begin...\n");
         http.begin("http://fricklebox.fritz.box:8080/api/get_circle");
-        // Serial.print("[HTTP] POST...\n");
         int httpCode = http.POST(String(""));
+        // Serial.printf("[HTTP] POST... code: %d\n", httpCode);
+
         if (httpCode > 0)
         {
-            // Serial.printf("[HTTP] POST... code: %d\n", httpCode);
 
             if (httpCode == HTTP_CODE_OK)
             {
                 String payload = http.getString();
                 pixels.clear();
 
-                const char* hexes = payload.c_str() + 1;
+                const char *hexes = payload.c_str() + 1;
                 // Serial.println(payload);
                 // Serial.println(hexes);
                 for (int i = 0; i < NUMPIXELS; i++)
@@ -88,6 +87,12 @@ void loop()
         {
             Serial.printf("[HTTP] GET... failed, error: %s\n",
                           http.errorToString(httpCode).c_str());
+        }
+
+        if (M5.Btn.wasPressed())
+        {
+            http.begin("http://fricklebox.fritz.box:8080/api/game_reset");
+            http.POST(String(""));
         }
 
         http.end();
