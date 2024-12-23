@@ -1,6 +1,5 @@
-@media screen and (orientation: portrait) {
+/* @media screen and (orientation: portrait) {
     html {
-        /* transform: rotate(0deg); */
         transform: rotate(-90deg);
         transform-origin: left top;
         width: 100vh;
@@ -10,7 +9,7 @@
         top: 100%;
         left: 0;
     }
-}
+} */
 
 /* App-wide styling */
 body {
