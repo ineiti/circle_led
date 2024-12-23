@@ -9,14 +9,14 @@ if (elem.requestFullscreen) {
     elem.msRequestFullscreen();
 }
 
-// document.addEventListener('touchmove', function(event) {
-//     event.preventDefault();
-// }, { passive: false });
+document.addEventListener('touchmove', function(event) {
+    event.preventDefault();
+}, { passive: false });
 
-// window.addEventListener('scroll', function(event) {
-//     event.preventDefault();
-//     window.scrollTo(0, 0);
-// });
+window.addEventListener('scroll', function(event) {
+    event.preventDefault();
+    window.scrollTo(0, 0);
+});
 
 // // Prevent default touch behavior
 // document.addEventListener('touchstart', function(e) {
