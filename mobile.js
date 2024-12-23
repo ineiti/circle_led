@@ -1,3 +1,4 @@
+alert("going into fullscreen");
 var elem = document.documentElement;
 if (elem.requestFullscreen) {
     elem.requestFullscreen()

@@ -77,10 +77,6 @@ fn Home() -> Element {
         }
     });
 
-    use_effect(move || {
-        document::eval(include_str!("../mobile.js"));
-    });
-
     rsx! {
         div {
             // Link {to: Route::Display{}, "Display"}
@@ -110,6 +106,7 @@ fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> El
     });
 
     let join = move |player: PlayColor| async move {
+        document::eval(include_str!("../mobile.js"));
         if game_join(player).await.unwrap() {
             current_player.set(Some(player));
         }
