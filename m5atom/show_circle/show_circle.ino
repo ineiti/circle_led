@@ -14,7 +14,7 @@ WiFiMulti wifiMulti;
 HTTPClient http;
 
 #define PIN 26
-#define NUMPIXELS 100
+#define NUMPIXELS 200
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel led(1, 27, NEO_GRB + NEO_KHZ800);
 
@@ -27,7 +27,7 @@ void setup()
     M5.begin(true, false, false);
 
     wifiMulti.addAP(WIFI_AP, WIFI_PW);
-    Serial.print("\nConnecting Wifi...\n");
+    Serial.println("\nConnecting Wifi...\n");
 
     delay(50);
 
@@ -40,25 +40,53 @@ void setup()
 
 #define DELAYVAL 5
 
+static uint8_t hex2u8(const char *c)
+{
+    uint8_t high = *c % 16 + 9 * (*c / 97);
+    c++;
+    uint8_t low = *c % 16 + 9 * (*c / 97);
+    return low + (high << 4);
+}
+
+static uint32_t str2pix(const char *c)
+{
+    return pixels.Color(hex2u8(c)>>4, hex2u8(c + 2)>>4, hex2u8(c + 4)>>4);
+    // return pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4));
+}
+
 void loop()
 {
+    Serial.println(hex2u8("01"));
+    Serial.println(hex2u8("0a"));
+    Serial.println(hex2u8("10"));
+    Serial.println(hex2u8("a0"));
+    Serial.println(str2pix("123456"));
     if ((wifiMulti.run() == WL_CONNECTED))
     {
         led.setPixelColor(0, pixels.Color(0, 255, 0));
         led.show();
 
-        Serial.print("[HTTP] begin...\n");
-        http.begin("http://example.com/index.html");
-        Serial.print("[HTTP] GET...\n");
-        int httpCode = http.GET();
+        // Serial.print("[HTTP] begin...\n");
+        http.begin("http://fricklebox.fritz.box:8080/api/get_circle");
+        // Serial.print("[HTTP] POST...\n");
+        int httpCode = http.POST(String(""));
         if (httpCode > 0)
         {
-            Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+            // Serial.printf("[HTTP] POST... code: %d\n", httpCode);
 
             if (httpCode == HTTP_CODE_OK)
             {
                 String payload = http.getString();
-                Serial.println(payload);
+                pixels.clear();
+
+                const char* hexes = payload.c_str() + 1;
+                // Serial.println(payload);
+                // Serial.println(hexes);
+                for (int i = 0; i < NUMPIXELS; i++)
+                {
+                    pixels.setPixelColor(i, str2pix(hexes + i * 6));
+                }
+                pixels.show();
             }
         }
         else
@@ -68,23 +96,11 @@ void loop()
         }
 
         http.end();
-
-        Serial.println("Will clear");
-        pixels.clear();
-
-        for (int i = 0; i < NUMPIXELS; i++)
-        {
-            pixels.setPixelColor(i, pixels.Color(0, 2, 0));
-
-            pixels.show();
-
-            delay(DELAYVAL);
-        }
     }
     else
     {
         Serial.print("connect failed");
     }
 
-    delay(5000);
+    delay(50);
 }
