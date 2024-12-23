@@ -118,7 +118,7 @@ fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> El
 
             for color in PlayColor::all() {
                 button {onclick: move |_| async move {join(color).await},
-                    class:"color-block", style:"background-color: #{color.to_hex()};",
+                    class:"color-block", style:"background-color: #{color.to_hex_pastel()};",
                     "{color.to_string()}"
                 }
             }
