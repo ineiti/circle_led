@@ -37,6 +37,9 @@ mod display;
 mod server;
 
 fn main() {
+    #[cfg(not(feature = "server"))]
+    server_fn::client::set_server_url("https://circle.gasser.blue");
+
     LaunchBuilder::new()
         .with_context(server_only! {
             server::Platform::new()
@@ -219,19 +222,19 @@ pub fn Display() -> Element {
     }
 }
 
-#[server]
+#[server(endpoint = "game_reset")]
 async fn game_reset() -> Result<(), ServerFnError> {
     let FromContext(plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.game_reset())
 }
 
-#[server]
+#[server(endpoint = "game_state")]
 async fn game_state() -> Result<Game, ServerFnError> {
     let FromContext(plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.game_state())
 }
 
-#[server]
+#[server(endpoint = "game_join")]
 async fn game_join(c: PlayColor) -> Result<bool, ServerFnError> {
     let FromContext(plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.game_join(c))
@@ -239,14 +242,12 @@ async fn game_join(c: PlayColor) -> Result<bool, ServerFnError> {
 
 #[server(endpoint = "get_circle")]
 async fn get_circle() -> Result<String, ServerFnError> {
-    print!("get_circle");
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.get_circle())
 }
 
 #[server(endpoint = "player_pos")]
 async fn player_pos(i: usize, c: PlayColor) -> Result<(), ServerFnError> {
-    print!("player_pos");
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     plat.player_pos(i, c);
     Ok(())
@@ -254,7 +255,6 @@ async fn player_pos(i: usize, c: PlayColor) -> Result<(), ServerFnError> {
 
 #[server(endpoint = "player_click")]
 async fn player_click(c: PlayColor) -> Result<(), ServerFnError> {
-    print!("player_click");
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     plat.player_click(c);
     Ok(())

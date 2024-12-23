@@ -14,7 +14,7 @@ WiFiMulti wifiMulti;
 HTTPClient http;
 
 #define PIN 26
-#define NUMPIXELS 8
+#define NUMPIXELS 100
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel led(1, 27, NEO_GRB + NEO_KHZ800);
 
@@ -38,7 +38,7 @@ void setup()
     led.show();
 }
 
-#define DELAYVAL 500
+#define DELAYVAL 5
 
 void loop()
 {
@@ -74,7 +74,7 @@ void loop()
 
         for (int i = 0; i < NUMPIXELS; i++)
         {
-            pixels.setPixelColor(i, pixels.Color(0, 150, 0));
+            pixels.setPixelColor(i, pixels.Color(0, 2, 0));
 
             pixels.show();
 
