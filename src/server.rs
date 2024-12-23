@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    board::{Board, CIRCLE_SIZE},
-    common::{Game, PlayColor},
+    board::Board,
+    common::{Game, PlayColor, LED_COUNT},
     display::Display,
 };
 
@@ -17,7 +17,6 @@ pub struct Platform {
 
 impl Platform {
     pub fn new() -> Self {
-        println!("New Platform");
         let out = Self {
             inner: Arc::new(Mutex::new(PlatformInner::new())),
         };
@@ -48,8 +47,12 @@ impl Platform {
         self.inner.lock().unwrap().game_state()
     }
 
-    pub fn game_join(&self, c: PlayColor) {
+    pub fn game_join(&self, c: PlayColor) -> bool {
         self.inner.lock().unwrap().game_join(c)
+    }
+
+    pub fn game_reset(&self) {
+        self.inner.lock().unwrap().game_reset()
     }
 }
 
@@ -87,20 +90,31 @@ impl PlatformInner {
         self.game.clone()
     }
 
-    fn game_join(&mut self, c: PlayColor) {
+    fn game_join(&mut self, c: PlayColor) -> bool {
         match self.game.clone() {
-            Game::Idle => self.game = Game::Play(vec![c]),
-            Game::Signup(vec) => self.game = Game::Play(vec![vec, vec![c]].concat()),
+            Game::Idle => self.game = Game::Signup(vec![c]),
+            Game::Signup(vec) => {
+                if vec.contains(&c) {
+                    return false;
+                }
+                self.game = Game::Signup(vec![vec, vec![c]].concat());
+                self.countdown = LED_COUNT;
+            }
             _ => {}
         }
+        true
+    }
+
+    fn game_reset(&mut self) {
+        self.game = Game::Idle;
     }
 
     fn tick(&mut self) {
         match self.game.clone() {
             Game::Idle => self.display.rainbow(),
             Game::Signup(players) => {
-                if players.len() == 1 && self.countdown < CIRCLE_SIZE / 2 {
-                    self.countdown = CIRCLE_SIZE;
+                if players.len() == 1 {
+                    self.countdown = LED_COUNT;
                 }
                 self.display.game_signup(players, self.countdown);
             }
@@ -108,6 +122,9 @@ impl PlatformInner {
                 self.display.rainbow();
                 if let Some(board) = self.board.as_mut() {
                     self.game = board.tick(&mut self.display);
+                    if matches!(self.game, Game::Winner(_)) {
+                        self.countdown = 200;
+                    }
                 }
             }
             Game::Winner(winner) => {
@@ -122,10 +139,14 @@ impl PlatformInner {
             self.countdown -= 1;
             if self.countdown == 0 {
                 self.game = match self.game.clone() {
-                    Game::Signup(players) => Game::Play(players),
+                    Game::Signup(players) => {
+                        self.board = Some(Board::new(players.clone()));
+                        Game::Play(players)
+                    }
                     _ => Game::Idle,
                 }
             }
         }
+        // tracing::debug!("New game state is: {:?} - {}", self.game, self.countdown);
     }
 }

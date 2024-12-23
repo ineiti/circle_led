@@ -1,4 +1,7 @@
-use common::{Game, PlayColor};
+use std::time::Duration;
+
+use async_std::task::sleep;
+use common::{Game, PlayColor, LED_COUNT};
 use dioxus::prelude::*;
 
 #[derive(Debug, Clone, Routable, PartialEq)]
@@ -6,8 +9,6 @@ use dioxus::prelude::*;
 enum Route {
     #[route("/")]
     Home {},
-    #[route("/play/:color")]
-    Play {color: PlayColor},
     #[route("/display")]
     Display {},
     #[route("/:..route")]
@@ -33,8 +34,6 @@ mod board;
 #[cfg(feature = "server")]
 mod display;
 #[cfg(feature = "server")]
-mod games;
-#[cfg(feature = "server")]
 mod server;
 
 fn main() {
@@ -54,56 +53,146 @@ fn App() -> Element {
     }
 }
 
-/// Home page
+/// Main Choice
 #[component]
 fn Home() -> Element {
+    let mut game = use_signal(|| Game::Idle);
+    let current_player: Signal<Option<PlayColor>> = use_signal(|| None);
+
+    use_future(move || async move {
+        loop {
+            game.set(game_state().await.unwrap());
+            sleep(Duration::from_millis(500)).await;
+        }
+    });
+
     rsx! {
         div {
-            Link {to: Route::Display{}, "Display"}
-        }
-        div {
-            id: "color-grid",
-            Link {to: Route::Play{color: PlayColor::Red},
-                class:"color-block", style:"background-color: #ff8888;",
-                "Rouge"
-            }
-            Link {to: Route::Play{color: PlayColor::Blue},
-                class:"color-block", style:"background-color: #8888ff;",
-                 "Bleue"
-            }
-            Link {to: Route::Play{color: PlayColor::Green},
-                class:"color-block", style:"background-color: #88ff88;",
-                "Vert"
-            }
-            Link {to: Route::Play{color: PlayColor::Yellow},
-                class:"color-block", style:"background-color: #ffff88;",
-                "Jaune"
-            }
-            Link {to: Route::Play{color: PlayColor::Magenta},
-                class:"color-block", style:"background-color: #ff88ff;",
-                "Rose"
-            }
-            Link {to: Route::Play{color: PlayColor::Cyan},
-                class:"color-block", style:"background-color: #88ffff;",
-                "Cyan"
+            // Link {to: Route::Display{}, "Display"}
+            match game() {
+                Game::Idle => rsx!{Join{joined: vec![], current_player}},
+                Game::Signup(joined) => if current_player().is_some() {
+                    rsx!{WaitJoin{ joined }}
+                } else {
+                    rsx!{Join{joined, current_player}}
+                },
+                Game::Play(players) => if let Some(player) = current_player() {
+                    rsx!{Play { players, player }}
+                } else {
+                    rsx!{WaitWinner {  }}
+                },
+                Game::Winner(winner) => rsx!{Winner {winner, player: current_player() }},
+                Game::Draw => rsx!{Draw {}},
             }
         }
     }
 }
 
 #[component]
-pub fn Play(color: PlayColor) -> Element {
+fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> Element {
+    current_player.set(None);
+
+    let join = move |player: PlayColor| async move {
+        if game_join(player).await.unwrap() {
+            current_player.set(Some(player));
+        }
+    };
+
+    rsx! {
+        div {
+            id: "color-grid",
+
+            for color in PlayColor::all() {
+                button {onclick: move |_| async move {join(color).await},
+                    class:"color-block", style:"background-color: #{color.to_hex()};",
+                    "{color.to_string()}"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn WaitJoin(joined: Vec<PlayColor>) -> Element {
+    rsx! {
+        div {
+            class: "centered-div",
+
+            "En attente d'autres joueurs - {joined:?}"
+        }
+    }
+}
+
+#[component]
+fn WaitWinner() -> Element {
+    rsx! {
+        div {
+            class: "centered-div",
+
+            "Un jeu est en cours - faut patienter!"
+        }
+    }
+}
+
+fn document_eval(parts: &[&str]) {
+    document::eval(&parts.join("\n"));
+}
+
+#[component]
+pub fn Play(players: Vec<PlayColor>, player: PlayColor) -> Element {
     use_effect(move || {
-        let script = include_str!("../play.js").to_string() + &format!("playerLED('{color}')");
-        document::eval(&script);
-        // document::eval("console.log('Im here');");
-        // document::eval("setTimeout( () => { document.location = '/' }, 1000 );");
+        document_eval(&[
+            &format!("const LED_COUNT = {LED_COUNT};"),
+            include_str!("../play.js"),
+            &format!("playerLED('{}')", player),
+        ]);
     });
 
     rsx! {
         div {
             class: "centered-div",
             div { id: "circle-container" }
+        }
+    }
+}
+
+#[component]
+fn Winner(winner: PlayColor, player: Option<PlayColor>) -> Element {
+    use_effect(move || {
+        if let Some(p) = player {
+            if winner == p {
+                document::eval(include_str!("../fireworks.js"));
+            }
+        }
+    });
+
+    rsx! {
+        div {
+            class: "centered-div",
+
+            "La couleur gagnante est {winner.to_string()}"
+            br{}
+            br{}
+            canvas {display: "block", id: "fireworks"}
+
+            if let Some(p) = player {
+                if p == winner {
+                    "Toutes nos félicitations!"
+                } else {
+                    "Bonne chance la prochaine fois!"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn Draw() -> Element {
+    rsx! {
+        div {
+            class: "centered-div",
+
+            "C'était chaud - personne n'a gagné..."
         }
     }
 }
@@ -111,27 +200,39 @@ pub fn Play(color: PlayColor) -> Element {
 #[component]
 pub fn Display() -> Element {
     use_effect(move || {
-        document::eval(include_str!("../display.js"));
+        document_eval(&[
+            &format!("const LED_COUNT = {LED_COUNT};"),
+            include_str!("../display.js"),
+        ]);
     });
 
     rsx! {
         div {
             class: "centered-div",
             div { id: "circle-container" }
+            button {
+                onclick: move |_| async move { game_reset().await.unwrap();},
+                class: "centered-div",
+                "Reset"
+            }
         }
     }
 }
 
-#[server(endpoint = "game_state")]
+#[server]
+async fn game_reset() -> Result<(), ServerFnError> {
+    let FromContext(plat): FromContext<server::Platform> = extract().await?;
+    Ok(plat.game_reset())
+}
+
+#[server]
 async fn game_state() -> Result<Game, ServerFnError> {
-    print!("Game_state");
     let FromContext(plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.game_state())
 }
 
-#[server(endpoint = "game_join")]
-async fn game_join(c: PlayColor) -> Result<(), ServerFnError> {
-    print!("Game_join");
+#[server]
+async fn game_join(c: PlayColor) -> Result<bool, ServerFnError> {
     let FromContext(plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.game_join(c))
 }

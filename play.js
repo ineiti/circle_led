@@ -1,6 +1,5 @@
 const DATA_URL_POS = '/api/player_pos';
 const DATA_URL_CLICK = '/api/player_click';
-const NUMBER_LEDs = 100;
 const LED_SPACING = 2;
 const UPDATE_FREQUENCY = 20;
 
@@ -20,8 +19,8 @@ function ledDiv(x, y, name) {
 }
 
 function createLEDs() {
-    for (let i = 0; i < NUMBER_LEDs; i++) {
-        const angle = ((i / NUMBER_LEDs) * 2 * Math.PI) - (Math.PI / 2);
+    for (let i = 0; i < LED_COUNT; i++) {
+        const angle = ((i / LED_COUNT) * 2 * Math.PI) - (Math.PI / 2);
         const x = Math.cos(angle) * radius + radius + LED_SPACING;
         const y = Math.sin(angle) * radius + radius + LED_SPACING;
         const led = ledDiv(x, y, 'led');
@@ -64,8 +63,8 @@ function getClosestLED(x, y) {
     const dx = x - centerX;
     const dy = y - centerY;
     const angle = Math.atan2(dy, dx);
-    let index = Math.round((angle + Math.PI / 2) / (2 * Math.PI) * NUMBER_LEDs) % NUMBER_LEDs;
-    if (index < 0) { index += NUMBER_LEDs; }
+    let index = Math.round((angle + Math.PI / 2) / (2 * Math.PI) * LED_COUNT) % LED_COUNT;
+    if (index < 0) { index += LED_COUNT; }
     return index;
 }
 

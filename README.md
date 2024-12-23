@@ -9,6 +9,8 @@ It takes 2-6 players and runs like this:
   - Disperse: being farthest from each other
 - Run: in the endgame the players need to avoid obstacles using the points gathered
 
+Currently only the `Run` is implemented!
+
 The game is played on mobile phones with a simple interface:
 
 - at the beginning each player can choose one of the remaining colors
@@ -38,3 +40,11 @@ Devbox should make this easy, but unfortunately this doesn't work yet:
 ```bash
 devbox shell -- dx serve
 ```
+
+# TODO
+
+- Avoid hiding of users
+- Don't change the player_pos if near the button
+- Add bonus points to get more life
+- Implement display on LED!
+- Make timing independant of LED_COUNT
