@@ -38,7 +38,9 @@ mod server;
 
 fn main() {
     #[cfg(not(feature = "server"))]
-    server_fn::client::set_server_url("https://circle.gasser.blue");
+    server_fn::client::set_server_url(
+        &std::env::var("BASE_URL").unwrap_or("http://localhost:8080".into()),
+    );
 
     LaunchBuilder::new()
         .with_context(server_only! {
