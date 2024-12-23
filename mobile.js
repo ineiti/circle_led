@@ -18,12 +18,12 @@ window.addEventListener('scroll', function(event) {
     window.scrollTo(0, 0);
 });
 
-// Prevent default touch behavior
-document.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-}, { passive: false });
+// // Prevent default touch behavior
+// document.addEventListener('touchstart', function(e) {
+//     e.preventDefault();
+// }, { passive: false });
 
-// Prevent zooming
-document.addEventListener('gesturestart', function(e) {
-    e.preventDefault();
-});
+// // Prevent zooming
+// document.addEventListener('gesturestart', function(e) {
+//     e.preventDefault();
+// });
