@@ -46,5 +46,4 @@ devbox shell -- dx serve
 - Avoid hiding of users
 - Don't change the player_pos if near the button
 - Add bonus points to get more life
-- Implement display on LED!
 - Make timing independant of LED_COUNT

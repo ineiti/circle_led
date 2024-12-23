@@ -46,7 +46,7 @@ impl Display {
     pub fn rainbow(&mut self) {
         self.leds[self.counter % LED_COUNT] = LED::from_hue((self.counter % 192) as u8);
         self.leds = (0..self.leds.len())
-            .map(|i| self.mean_leds(i).brightness(0.9))
+            .map(|i| self.mean_leds(i).brightness(0.6))
             .collect::<Vec<LED>>();
         let first = self.leds.remove(0);
         self.leds.push(first);

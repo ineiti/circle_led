@@ -67,10 +67,12 @@ fn App() -> Element {
 #[component]
 fn Home() -> Element {
     let mut game = use_signal(|| Game::Idle);
-    let current_player: Signal<Option<PlayColor>> = use_signal(|| None);
+    let mut current_player: Signal<Option<PlayColor>> = use_signal(|| None);
 
     use_future(move || async move {
         loop {
+            // current_player.set(Some(PlayColor::Red));
+            // game.set(Game::Play(vec![PlayColor::Red]));
             game.set(game_state().await.unwrap());
             sleep(Duration::from_millis(500)).await;
         }

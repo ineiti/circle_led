@@ -56,11 +56,6 @@ static uint32_t str2pix(const char *c)
 
 void loop()
 {
-    Serial.println(hex2u8("01"));
-    Serial.println(hex2u8("0a"));
-    Serial.println(hex2u8("10"));
-    Serial.println(hex2u8("a0"));
-    Serial.println(str2pix("123456"));
     if ((wifiMulti.run() == WL_CONNECTED))
     {
         led.setPixelColor(0, pixels.Color(0, 255, 0));

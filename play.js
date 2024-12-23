@@ -29,6 +29,10 @@ function createLEDs() {
 }
 
 async function highlightLED(index) {
+    if (index < 0) {
+        return;
+    }
+
     await fetch(DATA_URL_POS, {
         method: "POST",
         body: `i=${index}&c=${PLAYER_LED}`,
@@ -42,7 +46,7 @@ async function highlightLED(index) {
 }
 
 function playerLED(color) {
-    player = ledDiv(radius * 0.95, radius * 0.95, 'ledPlayer');
+    player = ledDiv(radius * 0.5 + LED_SPACING * 1.5, radius * 0.5 + LED_SPACING * 1.5, 'ledPlayer');
     player.style.backgroundColor = color;
     player.onclick = async () => {
         await fetch(DATA_URL_CLICK, {
@@ -53,6 +57,8 @@ function playerLED(color) {
             }
         });
     };
+    player.addEventListener('click', handleClick);
+    player.addEventListener('touched', handleClick);
     PLAYER_LED = color;
 }
 
@@ -62,6 +68,9 @@ function getClosestLED(x, y) {
     const centerY = containerRect.height / 2;
     const dx = x - centerX;
     const dy = y - centerY;
+    if (Math.hypot(dx, dy) < centerX / 2) {
+        return -1;
+    }
     const angle = Math.atan2(dy, dx);
     let index = Math.round((angle + Math.PI / 2) / (2 * Math.PI) * LED_COUNT) % LED_COUNT;
     if (index < 0) { index += LED_COUNT; }
@@ -70,20 +79,23 @@ function getClosestLED(x, y) {
 
 function handleInteraction(event) {
     const { clientX, clientY
-    } = event.touches ? event.touches[0] : event; const containerRect = container.getBoundingClientRect(); const
-        x = clientX - containerRect.left; const y = clientY - containerRect.top; const index = getClosestLED(x, y);
+    } = event.touches ? event.touches[0] : event;
+    const containerRect = container.getBoundingClientRect();
+    const x = clientX - containerRect.left;
+    const y = clientY - containerRect.top;
+    const index = getClosestLED(x, y);
     highlightLED(index);
 }
 
 function handleClick(event) {
-    const { clientX, clientY } = event.touches ? event.touches[0]
-        : event; const containerRect = container.getBoundingClientRect(); const x = clientX - containerRect.left; const
-            y = clientY - containerRect.top; const index = getClosestLED(x, y); highlightLED(index);
+    const { clientX, clientY } = event.touches ? event.touches[0] : event;
+    const containerRect = container.getBoundingClientRect();
+    const x = clientX - containerRect.left;
+    const y = clientY - containerRect.top;
+    const index = getClosestLED(x, y); highlightLED(index);
 }
 
 container.addEventListener('mousemove', handleInteraction);
 container.addEventListener('touchmove', handleInteraction);
-container.addEventListener('click', handleClick);
-container.addEventListener('touchend', handleClick);
 
 createLEDs();
