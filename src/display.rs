@@ -29,7 +29,7 @@ impl Display {
         for p in players {
             self.leds[p.pos.0] = p.color.into();
             if p.jump == 0 {
-                for dist in 1..p.lifes {
+                for dist in 1..p.lifes * 2 {
                     *self.led(p.pos, dist as i32) = LED::from(p.color).brightness(0.5);
                     *self.led(p.pos, -(dist as i32)) = LED::from(p.color).brightness(0.5);
                 }

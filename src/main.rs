@@ -67,7 +67,7 @@ fn App() -> Element {
 #[component]
 fn Home() -> Element {
     let mut game = use_signal(|| Game::Idle);
-    let mut current_player: Signal<Option<PlayColor>> = use_signal(|| None);
+    let current_player: Signal<Option<PlayColor>> = use_signal(|| None);
 
     use_future(move || async move {
         loop {
