@@ -98,7 +98,9 @@ impl PlatformInner {
                     return false;
                 }
                 self.game = Game::Signup(vec![vec, vec![c]].concat());
-                self.countdown = LED_COUNT;
+                // DEBUG
+                // self.countdown = LED_COUNT;
+                self.countdown = 1;
             }
             _ => {}
         }
@@ -110,6 +112,8 @@ impl PlatformInner {
     }
 
     fn tick(&mut self) {
+        self.display.tick();
+
         match self.game.clone() {
             Game::Idle => self.display.rainbow(),
             Game::Signup(players) => {
@@ -119,7 +123,7 @@ impl PlatformInner {
                 self.display.game_signup(players, self.countdown);
             }
             Game::Play(_) => {
-                self.display.rainbow();
+                self.display.flow();
                 if let Some(board) = self.board.as_mut() {
                     self.game = board.tick(&mut self.display);
                     if matches!(self.game, Game::Winner(_)) {
@@ -141,6 +145,7 @@ impl PlatformInner {
                 self.game = match self.game.clone() {
                     Game::Signup(players) => {
                         self.board = Some(Board::new(players.clone()));
+                        self.display.reset();
                         Game::Play(players)
                     }
                     _ => Game::Idle,

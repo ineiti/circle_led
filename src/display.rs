@@ -3,6 +3,9 @@ use crate::{
     common::{PlayColor, LED_COUNT},
 };
 
+const BLINK_JUMP: usize = 5;
+const BLINK_RECOVER: usize = 10;
+
 #[derive(Debug)]
 pub struct Display {
     leds: Vec<LED>,
@@ -25,21 +28,38 @@ impl Display {
             .join("")
     }
 
-    pub fn players(&mut self, players: Vec<Player>) {
+    pub fn draw_players(&mut self, players: Vec<Player>) {
+        let mut leds: Vec<LED> = (0..LED_COUNT).map(|_| LED::black()).collect();
         for p in players {
-            self.leds[p.pos.0] = p.color.into();
-            if p.jump == 0 {
-                for dist in 1..p.lifes * 2 {
-                    *self.led(p.pos, dist as i32) = LED::from(p.color).brightness(0.5);
-                    *self.led(p.pos, -(dist as i32)) = LED::from(p.color).brightness(0.5);
+            if p.jump == 0 || (self.counter % BLINK_JUMP < BLINK_JUMP / 2) {
+                leds[p.pos.0].xor(p.color.into());
+            }
+            if p.jump == 0
+                && (p.jump_recover == 0 || (self.counter % BLINK_RECOVER < BLINK_RECOVER / 2))
+            {
+                for dist in 1..p.lifes * 3 {
+                    leds[p.pos.add(dist as i32).0].xor(LED::from(p.color).brightness(0.5));
+                    leds[p.pos.sub(dist as i32).0].xor(LED::from(p.color).brightness(0.5));
                 }
+            }
+        }
+
+        for (i, l) in leds.into_iter().enumerate() {
+            if !l.is_black() {
+                self.leds[i] = l;
             }
         }
     }
 
-    pub fn obstacles(&mut self, obstacles: Vec<Position>) {
+    pub fn draw_obstacles(&mut self, obstacles: Vec<Position>) {
         for o in obstacles {
             self.leds[o.0] = LED::white();
+        }
+    }
+
+    pub fn draw_boni(&mut self, boni: Vec<Position>) {
+        for b in boni {
+            self.leds[b.0] = LED::from_hex("22ff22");
         }
     }
 
@@ -50,7 +70,13 @@ impl Display {
             .collect::<Vec<LED>>();
         let first = self.leds.remove(0);
         self.leds.push(first);
-        self.counter += 1;
+    }
+
+    pub fn flow(&mut self) {
+        let bright = [0.9, 0.8, 0.6, 0.4, 1.0, 0.3, 0.6, 0.7][self.counter / 100 % 8];
+        self.leds = (0..self.leds.len())
+            .map(|i| self.mean_leds(i).brightness(bright))
+            .collect::<Vec<LED>>();
     }
 
     pub fn game_draw(&mut self, counter: usize) {
@@ -76,13 +102,21 @@ impl Display {
 
     pub fn game_signup(&mut self, players: Vec<PlayColor>, counter: usize) {
         self.game_draw(counter);
+        let player_width = LED_COUNT / 6;
         for (i, p) in players.iter().enumerate() {
-            self.leds[i] = (*p).into();
+            for j in 0..player_width {
+                self.leds[i * player_width + j] = (*p).into();
+            }
         }
     }
 
-    fn led(&mut self, pos: Position, delta: i32) -> &mut LED {
-        &mut self.leds[pos.add(delta).0]
+    pub fn tick(&mut self) {
+        self.counter += 1;
+    }
+
+    pub fn reset(&mut self) {
+        self.counter = 0;
+        self.game_draw(0);
     }
 
     fn neighbors(&self, i: usize) -> (LED, LED) {
@@ -165,6 +199,10 @@ impl LED {
         l
     }
 
+    pub fn is_black(&self) -> bool {
+        self.red == 0 && self.green == 0 && self.blue == 0
+    }
+
     pub fn brightness(&mut self, delta: f32) -> LED {
         Self {
             red: Self::calc_bright(self.red, delta),
@@ -191,6 +229,12 @@ impl LED {
 
     pub fn to_string(&self) -> String {
         format!("{:02x}{:02x}{:02x}", self.red, self.green, self.blue)
+    }
+
+    pub fn xor(&mut self, other: LED) {
+        self.red ^= other.red;
+        self.green ^= other.green;
+        self.blue ^= other.blue;
     }
 
     fn calc_bright(c: u8, delta: f32) -> u8 {

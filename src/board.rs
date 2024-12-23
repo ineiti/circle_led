@@ -6,13 +6,16 @@ use crate::{
 };
 
 const JUMP_HEIGHT: usize = 20;
+const JUMP_COOLDOWN: usize = 80;
 const OBSTACLE_INTERVAL: usize = 50;
-const LIFE_INIT: usize = 5;
+const BONUS_INTERVAL: usize = 200;
+const LIFE_INIT: usize = 15;
 
 #[derive(Debug)]
 pub struct Board {
     players: HashMap<PlayColor, Player>,
-    obstacles: Vec<Obstacle>,
+    obstacles: Vec<Blob>,
+    boni: Vec<Blob>,
 }
 
 impl Board {
@@ -30,6 +33,7 @@ impl Board {
         Self {
             players,
             obstacles: vec![],
+            boni: vec![],
         }
     }
 
@@ -49,6 +53,7 @@ impl Board {
 
     pub fn tick(&mut self, display: &mut Display) -> Game {
         self.obstacles.retain_mut(|o| o.tick_visible());
+        self.boni.retain_mut(|b| b.tick_visible());
         self.check_collision(vec![]);
 
         // Only check collisions for players who moved.
@@ -64,11 +69,15 @@ impl Board {
         self.check_collision(players_ignore);
 
         if rand::random::<f32>() < 1. / OBSTACLE_INTERVAL as f32 {
-            self.obstacles.push(Obstacle::rand());
+            self.obstacles.push(Blob::rand());
+        }
+        if rand::random::<f32>() < 1. / BONUS_INTERVAL as f32 {
+            self.boni.push(Blob::rand());
         }
 
-        display.players(self.players.values().cloned().collect());
-        display.obstacles(self.obstacles.iter().map(|o| o.pos()).collect());
+        display.draw_players(self.players.values().cloned().collect());
+        display.draw_obstacles(self.obstacles.iter().map(|o| o.pos()).collect());
+        display.draw_boni(self.boni.iter().map(|b| b.pos()).collect());
 
         if self.players.len() > 1 {
             Game::Play(self.players.keys().cloned().collect())
@@ -83,13 +92,23 @@ impl Board {
         self.players.retain(|_, p: &mut Player| p.lifes > 0);
         for (_, player) in self.players.iter_mut() {
             if player.jump == 0 && !players_ignore.contains(&player.color) {
-                for o in &self.obstacles {
+                for o in &mut self.obstacles {
                     if o.pos() == player.pos {
                         player.lifes -= 1;
+                        o.clear = true;
+                    }
+                }
+
+                for b in &mut self.boni {
+                    if b.pos() == player.pos {
+                        player.lifes += 1;
+                        b.clear = true;
                     }
                 }
             }
         }
+        self.obstacles.retain(|o| !o.clear);
+        self.boni.retain(|b| !b.clear);
     }
 }
 
@@ -100,6 +119,7 @@ pub struct Player {
     pub color: PlayColor,
     pub lifes: usize,
     pub jump: usize,
+    pub jump_recover: usize,
 }
 
 impl Player {
@@ -111,6 +131,7 @@ impl Player {
             color,
             lifes,
             jump: 0,
+            jump_recover: 0,
         }
     }
 
@@ -129,10 +150,16 @@ impl Player {
         if self.jump > 0 {
             self.jump -= 1;
         }
+        if self.jump_recover > 0 {
+            self.jump_recover -= 1;
+        }
     }
 
     fn jump(&mut self) {
-        self.jump = JUMP_HEIGHT;
+        if self.jump_recover == 0 {
+            self.jump = JUMP_HEIGHT;
+            self.jump_recover = JUMP_HEIGHT + JUMP_COOLDOWN;
+        }
     }
 }
 
@@ -157,24 +184,32 @@ impl Position {
         let d = delta.rem_euclid(LED_COUNT as i32) as usize;
         Self((self.0 + d) % LED_COUNT)
     }
+
+    pub fn sub(&self, delta: i32) -> Self {
+        self.add(-delta)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Obstacle {
+pub struct Blob {
     init: Position,
     counter: i32,
+    direction: i32,
+    clear: bool,
 }
 
-impl Obstacle {
+impl Blob {
     pub fn rand() -> Self {
         Self {
             init: Position(rand::random::<usize>() % LED_COUNT),
             counter: LED_COUNT as i32,
+            direction: if rand::random() { -1 } else { 1 },
+            clear: false,
         }
     }
 
     pub fn pos(&self) -> Position {
-        self.init.add(self.counter)
+        self.init.add(self.counter * self.direction)
     }
 
     pub fn tick_visible(&mut self) -> bool {

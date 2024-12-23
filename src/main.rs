@@ -78,6 +78,10 @@ fn Home() -> Element {
         }
     });
 
+    use_effect(move || {
+        document::eval(include_str!("../mobile.js"));
+    });
+
     rsx! {
         div {
             // Link {to: Route::Display{}, "Display"}

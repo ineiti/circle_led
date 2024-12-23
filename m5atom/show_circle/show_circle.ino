@@ -14,7 +14,7 @@ WiFiMulti wifiMulti;
 HTTPClient http;
 
 #define PIN 26
-#define NUMPIXELS 200
+#define NUMPIXELS 201
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel led(1, 27, NEO_GRB + NEO_KHZ800);
 
@@ -79,7 +79,7 @@ void loop()
                 // Serial.println(hexes);
                 for (int i = 0; i < NUMPIXELS; i++)
                 {
-                    pixels.setPixelColor(i, str2pix(hexes + i * 6));
+                    pixels.setPixelColor(i + 1, str2pix(hexes + i * 6));
                 }
                 pixels.show();
             }

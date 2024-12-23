@@ -43,7 +43,12 @@ devbox shell -- dx serve
 
 # TODO
 
-- Avoid hiding of users
-- Don't change the player_pos if near the button
-- Add bonus points to get more life
 - Make timing independant of LED_COUNT
+
+# DONE
+
+- Avoid hiding of users
+- Add bonus points to get more life
+- Don't jump too often
+- Jump makes user blink
+- Show colors in start
