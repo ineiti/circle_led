@@ -38,8 +38,8 @@ impl Display {
                 && (p.jump_recover == 0 || (self.counter % BLINK_RECOVER < BLINK_RECOVER / 2))
             {
                 for dist in 1..p.lifes * 3 {
-                    leds[p.pos.add(dist as i32).0].xor(LED::from(p.color).brightness(0.5));
-                    leds[p.pos.sub(dist as i32).0].xor(LED::from(p.color).brightness(0.5));
+                    leds[p.pos.add(dist as i32).0].xor(LED::from(p.color).brightness(0.2));
+                    leds[p.pos.sub(dist as i32).0].xor(LED::from(p.color).brightness(0.2));
                 }
             }
         }
