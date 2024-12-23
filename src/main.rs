@@ -42,8 +42,7 @@ fn main() {
 
     #[cfg(not(feature = "server"))]
     {
-        let mut url = web_sys::window().unwrap().location().href().unwrap();
-        url.pop();
+        let mut url = web_sys::window().unwrap().location().origin().unwrap();
         server_fn::client::set_server_url(url.leak());
     }
 
