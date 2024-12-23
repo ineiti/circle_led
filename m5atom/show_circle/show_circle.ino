@@ -63,7 +63,7 @@ void loop()
 
         http.begin("http://fricklebox.fritz.box:8080/api/get_circle");
         int httpCode = http.POST(String(""));
-        // Serial.printf("[HTTP] POST... code: %d\n", httpCode);
+        Serial.printf("[HTTP] POST... code: %d\n", httpCode);
 
         if (httpCode > 0)
         {
@@ -89,10 +89,11 @@ void loop()
                           http.errorToString(httpCode).c_str());
         }
 
-        if (M5.Btn.wasPressed())
+        if (M5.Btn.read() == 1)
         {
             http.begin("http://fricklebox.fritz.box:8080/api/game_reset");
-            http.POST(String(""));
+            int httpCode = http.POST(String(""));
+            Serial.printf("Sent reset with code: %d\n", httpCode);
         }
 
         http.end();

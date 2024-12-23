@@ -43,6 +43,7 @@ devbox shell -- dx serve
 
 # TODO
 
+- Make moving around twice as fast as the blobs
 - Make timing independant of LED_COUNT
 
 # DONE

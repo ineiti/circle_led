@@ -9,7 +9,7 @@ const JUMP_HEIGHT: usize = 20;
 const JUMP_COOLDOWN: usize = 80;
 const OBSTACLE_INTERVAL: usize = 50;
 const BONUS_INTERVAL: usize = 200;
-const LIFE_INIT: usize = 15;
+const LIFE_INIT: usize = 5;
 
 #[derive(Debug)]
 pub struct Board {
