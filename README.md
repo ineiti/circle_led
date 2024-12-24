@@ -47,7 +47,9 @@ devbox shell -- dx serve
 
 # DONE
 
-- Make moving around twice as fast as the blobs
+- Countdown also shows in users
+- Nicer display of the LEDs with correct calculation (I know trigonometry better than Claude...)
+- Make moving around thrice as fast as the blobs
 - Avoid hiding of users
 - Add bonus points to get more life
 - Don't jump too often

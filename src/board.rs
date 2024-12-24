@@ -5,12 +5,12 @@ use crate::{
     display::Display,
 };
 
-const JUMP_HEIGHT: usize = 20;
-const JUMP_COOLDOWN: usize = 80;
 const OBSTACLE_INTERVAL: usize = 50;
 const BONUS_INTERVAL: usize = 200;
 const LIFE_INIT: usize = 5;
 const PLAYER_SPEED: usize = 3;
+const JUMP_DURATION: usize = 40 * PLAYER_SPEED;
+const JUMP_COOLDOWN: usize = 80 * PLAYER_SPEED;
 
 #[derive(Debug)]
 pub struct Board {
@@ -160,8 +160,8 @@ impl Player {
 
     fn jump(&mut self) {
         if self.jump_recover == 0 {
-            self.jump = JUMP_HEIGHT;
-            self.jump_recover = JUMP_HEIGHT + JUMP_COOLDOWN;
+            self.jump = JUMP_DURATION;
+            self.jump_recover = JUMP_DURATION + JUMP_COOLDOWN;
         }
     }
 }

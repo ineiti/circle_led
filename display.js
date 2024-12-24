@@ -1,32 +1,28 @@
 const DATA_URL = '/api/get_circle';
-const LED_SPACING = 2;
 const UPDATE_FREQUENCY = 20;
+// This is in pixels
+const LED_SIZE = 10;
 
 const container = document.getElementById('circle-container');
-const radius = Math.min(container.offsetWidth, container.offsetHeight) / 2 - LED_SPACING;
+const center = Math.min(container.offsetWidth, container.offsetHeight) / 2;
+const radius = center - LED_SIZE;
+
+let leds = [];
 
 function createLEDs() {
     for (let i = 0; i < LED_COUNT; i++) {
         const led = document.createElement('div');
+        led.width = `${LED_SIZE}px`;
+        led.height = `${LED_SIZE}px`;
         led.className = 'led';
-        const angle = ((i / LED_COUNT) * 2 * Math.PI) - (Math.PI / 2); // Adjust angle to start at top
-        const x = Math.cos(angle) * radius + radius + LED_SPACING;
-        const y = Math.sin(angle) * radius + radius + LED_SPACING;
+
+        const angle = ((i / LED_COUNT) * 2 * Math.PI) - (Math.PI / 2);
+        const x = Math.cos(angle) * radius + center - LED_SIZE / 2;
+        const y = Math.sin(angle) * radius + center - LED_SIZE / 2;
         led.style.transform = `translate(${x}px, ${y}px)`;
+        leds.push({ element: led, x, y });
         container.appendChild(led);
     }
-}
-
-function generateGradientData(index) {
-    let data = '';
-    for (let i = 0; i < LED_COUNT; i++) {
-        const ratio = Math.abs(((i + index) % LED_COUNT) / LED_COUNT * 2 - 1);
-        const r = Math.floor(255 * ratio).toString(16).padStart(2, '0');
-        const g = Math.floor(255 * (1 - ratio)).toString(16).padStart(2, '0');
-        const b = '00'; // Keep blue constant for a red-green gradient
-        data += `${r}${g}${b}`;
-    }
-    return data;
 }
 
 let index = 0;
