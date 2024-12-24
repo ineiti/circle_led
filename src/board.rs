@@ -75,7 +75,7 @@ impl Board {
             self.obstacle -= 1;
         }
 
-        if rand::random::<f32>() < 1. / self.obstacle as f32 {
+        if rand::random::<f32>() < 1. / (self.obstacle as f32 / 10.0) {
             self.obstacles.push(Blob::rand());
         }
         if rand::random::<f32>() < 1. / BONUS_INTERVAL as f32 {
