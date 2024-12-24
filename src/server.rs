@@ -98,9 +98,7 @@ impl PlatformInner {
                     return false;
                 }
                 self.game = Game::Signup(vec![vec, vec![c]].concat());
-                // DEBUG
-                // self.countdown = LED_COUNT;
-                self.countdown = 1;
+                self.countdown = LED_COUNT;
             }
             _ => {}
         }
