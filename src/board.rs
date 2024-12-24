@@ -59,12 +59,13 @@ impl Board {
 
         // Only check collisions for players who moved.
         for _ in 0..PLAYER_SPEED {
+            let positions: Vec<Player> = self.players.values().cloned().collect();
             let players_ignore: Vec<PlayColor> = self
                 .players
                 .iter_mut()
                 .filter_map(|(color, player)| {
                     let orig = player.pos;
-                    player.tick();
+                    player.tick(positions.clone());
                     (player.pos == orig).then(|| *color)
                 })
                 .collect();
@@ -146,12 +147,19 @@ impl Player {
         self.dest = Position(dest);
     }
 
-    fn tick(&mut self) {
+    fn tick(&mut self, players: Vec<Player>) {
         if self.dest != self.pos {
-            self.pos = if self.pos.direction(self.dest) > 0 {
+            let others: Vec<&Player> = players.iter().filter(|p| p.color != self.color).collect();
+            let new_pos = if self.pos.direction(self.dest) > 0 {
                 self.pos.add(-1)
             } else {
                 self.pos.add(1)
+            };
+            if others
+                .iter()
+                .all(|o| o.pos.direction(new_pos).abs() as usize >= (o.lifes + self.lifes) * 3 / 2)
+            {
+                self.pos = new_pos;
             }
         }
         if self.jump > 0 {

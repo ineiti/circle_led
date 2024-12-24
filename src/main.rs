@@ -128,11 +128,13 @@ fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> El
 
 #[component]
 fn WaitJoin(joined: Vec<PlayColor>) -> Element {
+    let colors: Vec<String> = joined.iter().map(|j| j.to_string()).collect::<Vec<String>>();
+    let colors_str = colors.join(" : ");
     rsx! {
         div {
             class: "centered-div",
 
-            "En attente d'autres joueurs - {joined:?}"
+            "En attente d'autres joueurs - {colors_str}"
         }
     }
 }

@@ -15,7 +15,7 @@ const COUNTDOWN_PLAY: usize = 2;
 #[cfg(not(debug_assertions))]
 const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
 
-const COUNTDOWN_WINNER: usize = 200;
+const COUNTDOWN_WINNER: usize = 100;
 
 #[derive(Clone, Debug)]
 pub struct Platform {
