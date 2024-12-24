@@ -17,6 +17,7 @@ pub struct Board {
     players: HashMap<PlayColor, Player>,
     obstacles: Vec<Blob>,
     boni: Vec<Blob>,
+    obstacle: usize,
 }
 
 impl Board {
@@ -35,6 +36,7 @@ impl Board {
             players,
             obstacles: vec![],
             boni: vec![],
+            obstacle: OBSTACLE_INTERVAL * 20,
         }
     }
 
@@ -71,7 +73,11 @@ impl Board {
             self.check_collision(players_ignore);
         }
 
-        if rand::random::<f32>() < 1. / OBSTACLE_INTERVAL as f32 {
+        if self.obstacle > 5 {
+            self.obstacle -= 1;
+        }
+
+        if rand::random::<f32>() < 1. / self.obstacle as f32 {
             self.obstacles.push(Blob::rand());
         }
         if rand::random::<f32>() < 1. / BONUS_INTERVAL as f32 {

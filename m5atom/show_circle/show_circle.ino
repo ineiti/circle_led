@@ -114,7 +114,7 @@ void loop()
     }
     else
     {
-        Serial.print("connect failed");
+        Serial.printf("WiFi connection to %s / %s failed", WIFI_AP, WIFI_PW);
     }
 
     delay(50);
