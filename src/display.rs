@@ -88,7 +88,7 @@ impl Display {
 
     pub fn flow(&mut self) {
         self.leds = (0..self.leds.len())
-            .map(|i| self.mean_leds(i).brightness(self.flow_brightness()))
+            .map(|i| self.mean_leds(i).brightness(self.flow_brightness() / 2.0))
             .collect::<Vec<LED>>();
     }
 

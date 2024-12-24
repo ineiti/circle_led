@@ -43,8 +43,6 @@ impl Board {
     pub fn player_pos(&mut self, c: PlayColor, i: usize) {
         if let Some(player) = self.players.get_mut(&c) {
             player.set_pos(i);
-        } else {
-            self.players.insert(c, Player::new(i, c, 10));
         }
     }
 
