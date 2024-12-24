@@ -43,11 +43,11 @@ devbox shell -- dx serve
 
 # TODO
 
-- Make moving around twice as fast as the blobs
 - Make timing independant of LED_COUNT
 
 # DONE
 
+- Make moving around twice as fast as the blobs
 - Avoid hiding of users
 - Add bonus points to get more life
 - Don't jump too often

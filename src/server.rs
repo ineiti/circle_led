@@ -6,9 +6,16 @@ use std::{
 
 use crate::{
     board::Board,
-    common::{Game, PlayColor, LED_COUNT},
+    common::{Game, PlayColor},
     display::Display,
 };
+
+#[cfg(debug_assertions)]
+const COUNTDOWN_PLAY: usize = 2;
+#[cfg(not(debug_assertions))]
+const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
+
+const COUNTDOWN_WINNER: usize = 200;
 
 #[derive(Clone, Debug)]
 pub struct Platform {
@@ -98,7 +105,7 @@ impl PlatformInner {
                     return false;
                 }
                 self.game = Game::Signup(vec![vec, vec![c]].concat());
-                self.countdown = LED_COUNT;
+                self.countdown = COUNTDOWN_PLAY;
             }
             _ => {}
         }
@@ -116,7 +123,7 @@ impl PlatformInner {
             Game::Idle => self.display.rainbow(),
             Game::Signup(players) => {
                 if players.len() == 1 {
-                    self.countdown = LED_COUNT;
+                    self.countdown = COUNTDOWN_PLAY;
                 }
                 self.display.game_signup(players, self.countdown);
             }
@@ -125,7 +132,7 @@ impl PlatformInner {
                 if let Some(board) = self.board.as_mut() {
                     self.game = board.tick(&mut self.display);
                     if matches!(self.game, Game::Winner(_)) {
-                        self.countdown = 200;
+                        self.countdown = COUNTDOWN_WINNER;
                     }
                 }
             }

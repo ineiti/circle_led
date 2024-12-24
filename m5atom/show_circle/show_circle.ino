@@ -37,7 +37,7 @@ void setup()
     M5.begin(true, false, false);
 
     wifiMulti.addAP(WIFI_AP, WIFI_PW);
-    Serial.println("\nConnecting Wifi...\n");
+    Serial.printf("\nConnecting to %s / %s...\n", WIFI_AP, WIFI_PW);
 
     delay(50);
 

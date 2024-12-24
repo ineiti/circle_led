@@ -5,6 +5,9 @@ use crate::{
 
 const BLINK_JUMP: usize = 5;
 const BLINK_RECOVER: usize = 10;
+const FLOW_PERIOD: usize = 100;
+const FLOW_MERGE: usize = FLOW_PERIOD / 3;
+const FLOWS: [f32; 8] = [0.9, 0.8, 0.6, 0.4, 1.0, 0.3, 0.6, 0.7];
 
 #[derive(Debug)]
 pub struct Display {
@@ -72,10 +75,20 @@ impl Display {
         self.leds.push(first);
     }
 
+    fn flow_brightness(&self) -> f32 {
+        let a = FLOWS[self.counter / FLOW_PERIOD % FLOWS.len()];
+        let b = FLOWS[(self.counter / FLOW_PERIOD + 1) % FLOWS.len()];
+        if self.counter % FLOW_PERIOD < FLOW_MERGE {
+            let merge: f32 = (self.counter % FLOW_PERIOD) as f32 / FLOW_MERGE as f32;
+            a * (1.0 - merge) + b * merge
+        } else {
+            b
+        }
+    }
+
     pub fn flow(&mut self) {
-        let bright = [0.9, 0.8, 0.6, 0.4, 1.0, 0.3, 0.6, 0.7][self.counter / 100 % 8];
         self.leds = (0..self.leds.len())
-            .map(|i| self.mean_leds(i).brightness(bright))
+            .map(|i| self.mean_leds(i).brightness(self.flow_brightness()))
             .collect::<Vec<LED>>();
     }
 
@@ -101,13 +114,14 @@ impl Display {
     }
 
     pub fn game_signup(&mut self, players: Vec<PlayColor>, counter: usize) {
-        self.game_draw(counter);
+        (0..counter).for_each(|i| self.leds[i] = LED::white());
         let player_width = LED_COUNT / 6;
         for (i, p) in players.iter().enumerate() {
             for j in 0..player_width {
                 self.leds[i * player_width + j] = (*p).into();
             }
         }
+        (counter..LED_COUNT).for_each(|i| self.leds[i] = LED::black());
     }
 
     pub fn tick(&mut self) {

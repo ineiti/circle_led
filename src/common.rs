@@ -15,15 +15,14 @@ pub enum PlayColor {
 
 impl PlayColor {
     pub fn to_hex(&self) -> String {
-        self.to_hex_pastel()
-        // match self {
-        //     PlayColor::Red => "ff0000",
-        //     PlayColor::Green => "00ff00",
-        //     PlayColor::Blue => "0000ff",
-        //     PlayColor::Yellow => "ffff00",
-        //     PlayColor::Cyan => "00ffff",
-        //     PlayColor::Magenta => "ff00ff",
-        // }.into()
+        match self {
+            PlayColor::Red => "ff0000",
+            PlayColor::Green => "00ff00",
+            PlayColor::Blue => "0000ff",
+            PlayColor::Yellow => "ffff00",
+            PlayColor::Cyan => "00ffff",
+            PlayColor::Magenta => "ff00ff",
+        }.into()
     }
 
     pub fn to_hex_pastel(&self) -> String {

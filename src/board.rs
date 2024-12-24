@@ -10,6 +10,7 @@ const JUMP_COOLDOWN: usize = 80;
 const OBSTACLE_INTERVAL: usize = 50;
 const BONUS_INTERVAL: usize = 200;
 const LIFE_INIT: usize = 5;
+const PLAYER_SPEED: usize = 3;
 
 #[derive(Debug)]
 pub struct Board {
@@ -57,16 +58,18 @@ impl Board {
         self.check_collision(vec![]);
 
         // Only check collisions for players who moved.
-        let players_ignore: Vec<PlayColor> = self
-            .players
-            .iter_mut()
-            .filter_map(|(color, player)| {
-                let orig = player.pos;
-                player.tick();
-                (player.pos == orig).then(|| *color)
-            })
-            .collect();
-        self.check_collision(players_ignore);
+        for _ in 0..PLAYER_SPEED {
+            let players_ignore: Vec<PlayColor> = self
+                .players
+                .iter_mut()
+                .filter_map(|(color, player)| {
+                    let orig = player.pos;
+                    player.tick();
+                    (player.pos == orig).then(|| *color)
+                })
+                .collect();
+            self.check_collision(players_ignore);
+        }
 
         if rand::random::<f32>() < 1. / OBSTACLE_INTERVAL as f32 {
             self.obstacles.push(Blob::rand());
