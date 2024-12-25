@@ -37,20 +37,77 @@ mod display;
 #[cfg(feature = "server")]
 mod server;
 
+// The entry point for the server
+#[cfg(feature = "server")]
+#[tokio::main]
+async fn main() {
+    use axum::{
+        response::sse::{Event, Sse},
+        routing::get,
+    };
+    use futures::Stream;
+    use server::Platform;
+    use std::convert::Infallible;
+    use std::time::Duration;
+    use tokio::{sync::mpsc, task};
+
+    dioxus_logger::init(Level::INFO).expect("failed to init logger");
+
+    async fn sse_handler(
+        mut platform: Platform,
+    ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+        let (tx, rx) = mpsc::channel(10);
+
+        task::spawn(async move {
+            loop {
+                sleep(Duration::from_millis(50)).await;
+
+                if tx
+                    .send(Ok(Event::default().data(platform.get_circle())))
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
+
+        // Convert the receiver into a stream
+        Sse::new(tokio_stream::wrappers::ReceiverStream::new(rx))
+    }
+
+    // Create a global instance of Platform, and pass it to the axum router as the context.
+    let platform = server::Platform::new();
+    let router = axum::Router::new()
+        .route(
+            "/get_circle",
+            get({
+                let platform = platform.clone();
+                move || sse_handler(platform.clone())
+            }),
+        )
+        .serve_dioxus_application(
+            ServeConfigBuilder::new().context_providers(std::sync::Arc::new(vec![Box::new(
+                move || Box::new(platform.clone()),
+            )])),
+            App,
+        );
+
+    let router = router.into_make_service();
+    let address = dioxus_cli_config::fullstack_address_or_localhost();
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
+    axum::serve(listener, router).await.unwrap();
+}
+
+// For any other platform, we just launch the app
+#[cfg(not(feature = "server"))]
 fn main() {
     dioxus_logger::init(Level::INFO).expect("failed to init logger");
 
-    #[cfg(not(feature = "server"))]
-    {
-        let url = web_sys::window().unwrap().location().origin().unwrap();
-        server_fn::client::set_server_url(url.leak());
-    }
+    let url = web_sys::window().unwrap().location().origin().unwrap();
+    server_fn::client::set_server_url(url.leak());
 
-    LaunchBuilder::new()
-        .with_context(server_only! {
-            server::Platform::new()
-        })
-        .launch(App);
+    LaunchBuilder::new().launch(App);
 }
 
 #[component]
@@ -128,7 +185,10 @@ fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> El
 
 #[component]
 fn WaitJoin(joined: Vec<PlayColor>) -> Element {
-    let colors: Vec<String> = joined.iter().map(|j| j.to_string()).collect::<Vec<String>>();
+    let colors: Vec<String> = joined
+        .iter()
+        .map(|j| j.to_string())
+        .collect::<Vec<String>>();
     let colors_str = colors.join(" : ");
     rsx! {
         div {
