@@ -47,7 +47,7 @@ async fn main() {
     };
     use futures::Stream;
     use server::Platform;
-    use std::convert::Infallible;
+    use std::{convert::Infallible, time::SystemTime};
     use std::time::Duration;
     use tokio::{sync::mpsc, task};
 
@@ -59,9 +59,8 @@ async fn main() {
         let (tx, rx) = mpsc::channel(10);
 
         task::spawn(async move {
+            let mut start = SystemTime::now();
             loop {
-                sleep(Duration::from_millis(50)).await;
-
                 if tx
                     .send(Ok(Event::default().data(platform.get_circle())))
                     .await
@@ -69,6 +68,9 @@ async fn main() {
                 {
                     break;
                 }
+                sleep(Duration::from_millis(50) - start.elapsed().unwrap()).await;
+                tracing::info!("Elapsed: {:?}", start.elapsed());
+                start = SystemTime::now();
             }
         });
 
