@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
+#include <WiFiUDP.h>
 #include <HTTPClient.h>
 
 // This needs to define WIFI_AP and WIFI_PW.
@@ -16,7 +17,8 @@
 
 #define PIN_STRIP 26
 #define PIN_LED 27
-#define NUMPIXELS 200
+#define NUMPIXELS 292
+#define CIRCLE_SIZE 200
 
 // Doesn't work because of __enable_irq()!
 // #include <PololuLedStrip.h>
@@ -38,7 +40,7 @@ static uint8_t hex2u8(const char *c) {
 
 static uint32_t str2pix(const char *c) {
   // return pixels.Color(hex2u8(c) >> 4, hex2u8(c + 2) >> 4, hex2u8(c + 4) >> 4);
-  return pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4));
+  return pixels.gamma32(pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4)));
 }
 
 int state = 0;
@@ -71,9 +73,13 @@ void setup() {
 
   pixels.begin();
   pixels.setBrightness(128);
+  for (uint16_t i = 0; i < NUMPIXELS; i++){
+    pixels.setPixelColor(i, pixels.gamma32(pixels.ColorHSV((i%8) << 13, 0x7f + (i & 0x10) << 3, 0x7f + (i & 0x20) << 3)));
+  }
+  pixels.setPixelColor(NUMPIXELS-1, 0);
   led.begin();
 
-  led.setPixelColor(0, pixels.Color(255, 0, 0));
+  led.setPixelColor(0, pixels.Color(32, 0, 0));
   led.show();
 }
 
@@ -106,14 +112,23 @@ void loop() {
   }
 }
 
+void show_LEDs(const char *hexes){
+  for (int i = 0; i < CIRCLE_SIZE; i++) {
+    pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + 1,
+                         str2pix(hexes + i * 6));
+    // pixels.gamma32(str2pix(hexes + i * 6)));
+  }
+  pixels.show();
+}
+
 HTTPClient http;
 
 void state_wifi() {
   if ((wifiMulti.run() == WL_CONNECTED)) {
-    led.setPixelColor(0, pixels.Color(0, 255, 0));
+    led.setPixelColor(0, pixels.Color(0, 32, 0));
     led.show();
 
-    state = STATE_SSE_BEGIN;
+    state = STATE_UDP_CONNECT;
   } else {
     Serial.printf("WiFi connection to %s / %s failed\n", WIFI_AP, WIFI_PW);
 
@@ -121,7 +136,38 @@ void state_wifi() {
   }
 }
 
+WiFiUDP client_udp;
+
+unsigned long last;
+
 void state_udp_connect() {
+  // WiFiSTAClass local;
+  // Serial.printf("Local IP: %s\n", local.localIP().toString());
+  // client_udp.begin(8081);
+
+  client_udp.beginPacket("192.168.178.70", 8081);
+  client_udp.write(0x30);
+  client_udp.endPacket();
+
+  int count = 10;
+  while (client_udp.parsePacket() == 0){
+    if (count-- == 0){
+      Serial.printf("%06ld (%03d): Didn't get a reply in 100ms\n", millis(), millis() - last);
+      return;
+    }
+    delay(10);
+  }
+  int bufLen = CIRCLE_SIZE*6;
+  char buf[bufLen+1];
+  int res = client_udp.read(buf, bufLen);
+  if (res != bufLen){
+    Serial.printf("%06ld (%03d): Only got %d out of %d bytes\n", millis(), millis() - last);
+  } else {
+    show_LEDs(buf);
+  }
+  // buf[10] = 0;
+  // Serial.printf("%06ld: Read %d bytes, starting with: %s\n", millis() - last, res, buf);
+  last = millis();
 }
 
 void state_udp_read() {
@@ -163,7 +209,7 @@ void state_sse_stream() {
     Serial.printf("Out of sync by %d - interval: %d\n", next_read - start, read_interval);
   }
 
-  int bufLen = NUMPIXELS * 6 + 15;
+  int bufLen = CIRCLE_SIZE * 6 + 15;
   if (client.available() == 0) {
     int loop = 50;
     for (; client.available() < bufLen; loop--) {
@@ -195,15 +241,11 @@ void state_sse_stream() {
   }
   buf[read] = 0;
 
-  const char *hexes = (char *)buf + 11;
+  char *hexes = (char *)buf + 11;
   // Serial.println((char*)buf);
   // Serial.println(hexes);
-  for (int i = 0; i < NUMPIXELS; i++) {
-    pixels.setPixelColor(((i + NUMPIXELS / 2) % NUMPIXELS) + 1,
-                         str2pix(hexes + i * 6));
-    // pixels.gamma32(str2pix(hexes + i * 6)));
-  }
-  pixels.show();
+
+  show_LEDs(hexes);
 
   // buf[20] = 0;
   // Serial.printf("%s\n%s\n", buf, hexes);
@@ -224,15 +266,10 @@ void state_get_request() {
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();
 
-      const char *hexes = payload.c_str() + 1;
+      // const char *hexes = payload.c_str() + 1;
       // Serial.println(payload);
       // Serial.println(hexes);
-      for (int i = 0; i < NUMPIXELS; i++) {
-        pixels.setPixelColor(((i + NUMPIXELS / 2) % NUMPIXELS) + 1,
-                             str2pix(hexes + i * 6));
-        // pixels.gamma32(str2pix(hexes + i * 6)));
-      }
-      pixels.show();
+      show_LEDs(payload.c_str() + 1);
     }
   } else {
     Serial.printf("[HTTP] GET... failed, error: %s\n",
@@ -256,10 +293,10 @@ void state_get_request() {
 void state_button() {
   if (M5.Btn.read() == 1) {
     http.begin(BASE_URL "api/game_reset");
-    led.setPixelColor(0, pixels.Color(255, 255, 0));
+    led.setPixelColor(0, pixels.Color(32, 32, 0));
     led.show();
     int httpCode = http.POST(String(""));
-    led.setPixelColor(0, pixels.Color(0, 255, 0));
+    led.setPixelColor(0, pixels.Color(0, 32, 0));
     led.show();
     // Serial.printf("Sent reset with code: %d\n", httpCode);
   }

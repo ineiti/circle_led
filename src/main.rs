@@ -47,9 +47,11 @@ async fn main() {
     };
     use futures::Stream;
     use server::Platform;
-    use std::{convert::Infallible, time::SystemTime};
     use std::time::Duration;
-    use tokio::{sync::mpsc, task};
+    use std::{convert::Infallible, time::SystemTime};
+    use tokio::{
+        net::UdpSocket, sync::{broadcast::channel, mpsc}, task
+    };
 
     dioxus_logger::init(Level::INFO).expect("failed to init logger");
 
@@ -66,7 +68,8 @@ async fn main() {
                     .await
                     .is_err()
                 {
-                    break;
+                    tracing::error!("Streaming aborted");
+                    return;
                 }
                 sleep(Duration::from_millis(50) - start.elapsed().unwrap()).await;
                 tracing::info!("Elapsed: {:?}", start.elapsed());
@@ -80,6 +83,40 @@ async fn main() {
 
     // Create a global instance of Platform, and pass it to the axum router as the context.
     let platform = server::Platform::new();
+
+    let (tx, rx) = channel::<String>(1);
+    let mut plat = platform.clone();
+    task::spawn(async move {
+        loop {
+            sleep(Duration::from_millis(50)).await;
+
+            if let Err(e) = tx.send(plat.get_circle()) {
+                tracing::error!("While sending circle data: {e:?}");
+                continue;
+            }
+        }
+    });
+
+    task::spawn(async move {
+        loop {
+            let socket = UdpSocket::bind("0.0.0.0:8081").await.expect("Binding to port");
+            // Receives a single datagram message on the socket. If `buf` is too small to hold
+            // the message, it will be cut off.
+            let mut buf = [0; 10];
+            if let Ok((_rcv, src)) = socket.recv_from(&mut buf).await {
+                // Redeclare `buf` as slice of the received data and send reverse data back to origin.
+                // tracing::info!("Got {} bytes from {src:?}, waiting for data", rcv);
+                let mut rx = rx.resubscribe();
+                if let Ok(answer) = rx.recv().await {
+                    // tracing::info!("Sending {} bytes through UDP", answer.len());
+                    if let Err(e) = socket.send_to(answer.as_bytes(), &src).await {
+                        tracing::error!("While sending back: {e:?}");
+                    }
+                }
+            }
+        } // the socket is closed here
+    });
+
     let router = axum::Router::new()
         .route(
             "/get_circle",
