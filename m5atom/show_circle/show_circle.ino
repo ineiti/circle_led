@@ -15,7 +15,12 @@
 
 #define BASE_NAME "circle.gasser.blue"
 #define BASE_URL "https://" BASE_NAME
+// #define BASE_NAME "192.168.178.70"
+// #define BASE_URL "http://" BASE_NAME ":8080"
 #define BASE_UDP_PORT 8081
+
+#define REQUEST_FPS 20
+#define REQUEST_INTERVAL 1000 / REQUEST_FPS
 
 #define PIN_STRIP 26
 #define PIN_LED 27
@@ -42,7 +47,8 @@ static uint8_t hex2u8(const char *c) {
 
 static uint32_t str2pix(const char *c) {
   // return pixels.Color(hex2u8(c) >> 4, hex2u8(c + 2) >> 4, hex2u8(c + 4) >> 4);
-  return pixels.gamma32(pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4)));
+  return pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4));
+  // return pixels.gamma32(pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4)));
 }
 
 #define STATE_WIFI 0
@@ -62,13 +68,15 @@ void state_post_request();
 #define REQUEST_SSE 1
 #define REQUEST_UDP 2
 
-int request = REQUEST_POST;
+int request = REQUEST_UDP;
 WiFiMulti wifiMulti;
 int state = 0;
 
 int request_start() {
   Serial.printf("Request is %d\n", request);
-  pixels.setPixelColor(NUMPIXELS - 1, pixels.ColorHSV(request << 14, 0x80, 0x80));
+  for (int i = 0; i < 3; i++){
+    pixels.setPixelColor(NUMPIXELS - 1 - i, pixels.ColorHSV(0x7fff, (request == i) << 7, 0x80));
+  }
 
   switch (request) {
     case REQUEST_POST:
@@ -90,12 +98,13 @@ void setup() {
 
   pixels.begin();
   pixels.setBrightness(128);
+  pixels.clear();
   for (uint16_t i = 0; i < NUMPIXELS; i++) {
     pixels.setPixelColor(i, pixels.gamma32(pixels.ColorHSV((i % 8) << 13, 0x7f + (i & 0x10) << 3, 0x7f + (i & 0x20) << 3)));
   }
   pixels.setPixelColor(NUMPIXELS - 1, 0);
-  led.begin();
 
+  led.begin();
   led.setPixelColor(0, pixels.Color(32, 0, 0));
   led.show();
 }
@@ -162,10 +171,10 @@ void state_udp_read() {
   client_udp.write(0x30);
   client_udp.endPacket();
 
-  int count = 10;
+  int count = 5;
   while (client_udp.parsePacket() == 0) {
     if (count-- == 0) {
-      Serial.printf("%06ld (%03d): Didn't get a reply in 100ms\n", millis(), millis() - last);
+      Serial.printf("%06ld (%03d): Didn't get a reply in 50ms\n", millis(), millis() - last);
       return;
     }
     delay(10);
@@ -189,7 +198,6 @@ unsigned long next_read;
 unsigned long read_interval;
 
 void state_sse_connect() {
-  http.stop();
   http.begin(BASE_URL "/get_circle");
 
   Serial.println("Connecting to get_circle");
@@ -199,7 +207,7 @@ void state_sse_connect() {
     if (httpCode == HTTP_CODE_OK) {
       client = http.getStream();
       state = STATE_SSE_STREAM;
-      read_interval = 50;
+      read_interval = REQUEST_INTERVAL;
       next_read = millis() + read_interval;
     } else {
       Serial.printf("HTTPCode is %d\n", httpCode);
@@ -220,7 +228,7 @@ void state_sse_stream() {
 
   int bufLen = CIRCLE_SIZE * 6 + 15;
   if (client.available() == 0) {
-    int loop = 50;
+    int loop = REQUEST_INTERVAL;
     for (; client.available() < bufLen; loop--) {
       if (loop == 0) {
         Serial.println("Didn't get any bytes after 500ms - reconnecting");
@@ -230,7 +238,7 @@ void state_sse_stream() {
       delay(10);
       next_read += 10;
     }
-    Serial.printf("%05ld: No bytes available for %d loops\n", millis(), 50 - loop);
+    Serial.printf("%05ld: No bytes available for %d loops\n", millis(), REQUEST_INTERVAL - loop);
     read_interval += 5;
   } else if (client.available() < 2 * bufLen) {
     read_interval += 2;
@@ -312,8 +320,8 @@ void state_post_request() {
   unsigned long stop = millis();
   Serial.printf("POST request duration: %ld..%ld = %ld\n", start, stop, stop - start);
   stop = millis();
-  if (stop < start + 100) {
-    delay(100 - (stop - start));
+  if (stop < start + REQUEST_INTERVAL) {
+    delay(REQUEST_INTERVAL - (stop - start));
   }
 }
 
