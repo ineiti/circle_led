@@ -13,7 +13,9 @@
 // Don't check into github...
 #include "wifi.h"
 
-#define BASE_URL "https://circle.gasser.blue/"
+#define BASE_NAME "circle.gasser.blue"
+#define BASE_URL "https://" BASE_NAME
+#define BASE_UDP_PORT 8081
 
 #define PIN_STRIP 26
 #define PIN_LED 27
@@ -43,25 +45,40 @@ static uint32_t str2pix(const char *c) {
   return pixels.gamma32(pixels.Color(hex2u8(c), hex2u8(c + 2), hex2u8(c + 4)));
 }
 
-int state = 0;
 #define STATE_WIFI 0
 void state_wifi();
-#define STATE_UDP_CONNECT 1
-void state_udp_connect();
-#define STATE_UDP_READ 2
+#define STATE_UDP_READ 1
 void state_udp_read();
-#define STATE_SSE_BEGIN 3
-void state_sse_begin();
-#define STATE_SSE_CONNECT 4
+#define STATE_SSE_CONNECT 2
 void state_sse_connect();
-#define STATE_SSE_STREAM 5
+#define STATE_SSE_STREAM 3
 void state_sse_stream();
-#define STATE_GET_REQUEST 6
-void state_get_request();
-#define STATE_BUTTON 7
-void state_button();
+#define STATE_POST_CONNECT 4
+void state_post_connect();
+#define STATE_POST_REQUEST 5
+void state_post_request();
 
+#define REQUEST_POST 0
+#define REQUEST_SSE 1
+#define REQUEST_UDP 2
+
+int request = REQUEST_POST;
 WiFiMulti wifiMulti;
+int state = 0;
+
+int request_start() {
+  Serial.printf("Request is %d\n", request);
+  pixels.setPixelColor(NUMPIXELS - 1, pixels.ColorHSV(request << 14, 0x80, 0x80));
+
+  switch (request) {
+    case REQUEST_POST:
+      return STATE_POST_CONNECT;
+    case REQUEST_SSE:
+      return STATE_SSE_CONNECT;
+    case REQUEST_UDP:
+      return STATE_UDP_READ;
+  }
+}
 
 void setup() {
   M5.begin(true, false, false);
@@ -73,10 +90,10 @@ void setup() {
 
   pixels.begin();
   pixels.setBrightness(128);
-  for (uint16_t i = 0; i < NUMPIXELS; i++){
-    pixels.setPixelColor(i, pixels.gamma32(pixels.ColorHSV((i%8) << 13, 0x7f + (i & 0x10) << 3, 0x7f + (i & 0x20) << 3)));
+  for (uint16_t i = 0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, pixels.gamma32(pixels.ColorHSV((i % 8) << 13, 0x7f + (i & 0x10) << 3, 0x7f + (i & 0x20) << 3)));
   }
-  pixels.setPixelColor(NUMPIXELS-1, 0);
+  pixels.setPixelColor(NUMPIXELS - 1, 0);
   led.begin();
 
   led.setPixelColor(0, pixels.Color(32, 0, 0));
@@ -88,14 +105,8 @@ void loop() {
     case STATE_WIFI:
       state_wifi();
       break;
-    case STATE_GET_REQUEST:
-      state_get_request();
-      break;
-    case STATE_BUTTON:
-      state_button();
-      break;
-    case STATE_SSE_BEGIN:
-      state_sse_begin();
+    case STATE_UDP_READ:
+      state_udp_read();
       break;
     case STATE_SSE_CONNECT:
       state_sse_connect();
@@ -103,16 +114,18 @@ void loop() {
     case STATE_SSE_STREAM:
       state_sse_stream();
       break;
-    case STATE_UDP_CONNECT:
-      state_udp_connect();
+    case STATE_POST_CONNECT:
+      state_post_connect();
       break;
-    case STATE_UDP_READ:
-      state_udp_read();
+    case STATE_POST_REQUEST:
+      state_post_request();
       break;
   }
+
+  fetch_button();
 }
 
-void show_LEDs(const char *hexes){
+void show_LEDs(const char *hexes) {
   for (int i = 0; i < CIRCLE_SIZE; i++) {
     pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + 1,
                          str2pix(hexes + i * 6));
@@ -128,7 +141,7 @@ void state_wifi() {
     led.setPixelColor(0, pixels.Color(0, 32, 0));
     led.show();
 
-    state = STATE_UDP_CONNECT;
+    state = request_start();
   } else {
     Serial.printf("WiFi connection to %s / %s failed\n", WIFI_AP, WIFI_PW);
 
@@ -140,27 +153,27 @@ WiFiUDP client_udp;
 
 unsigned long last;
 
-void state_udp_connect() {
+void state_udp_read() {
   // WiFiSTAClass local;
   // Serial.printf("Local IP: %s\n", local.localIP().toString());
   // client_udp.begin(8081);
 
-  client_udp.beginPacket("192.168.178.70", 8081);
+  client_udp.beginPacket(BASE_NAME, BASE_UDP_PORT);
   client_udp.write(0x30);
   client_udp.endPacket();
 
   int count = 10;
-  while (client_udp.parsePacket() == 0){
-    if (count-- == 0){
+  while (client_udp.parsePacket() == 0) {
+    if (count-- == 0) {
       Serial.printf("%06ld (%03d): Didn't get a reply in 100ms\n", millis(), millis() - last);
       return;
     }
     delay(10);
   }
-  int bufLen = CIRCLE_SIZE*6;
-  char buf[bufLen+1];
+  int bufLen = CIRCLE_SIZE * 6;
+  char buf[bufLen + 1];
   int res = client_udp.read(buf, bufLen);
-  if (res != bufLen){
+  if (res != bufLen) {
     Serial.printf("%06ld (%03d): Only got %d out of %d bytes\n", millis(), millis() - last);
   } else {
     show_LEDs(buf);
@@ -170,21 +183,15 @@ void state_udp_connect() {
   last = millis();
 }
 
-void state_udp_read() {
-}
-
-void state_sse_begin() {
-  // http.begin(BASE_URL "api/get_circle");
-  http.begin("http://192.168.4.190:8080/get_circle");
-  state = STATE_SSE_CONNECT;
-}
-
 WiFiClient client;
 
 unsigned long next_read;
 unsigned long read_interval;
 
 void state_sse_connect() {
+  http.stop();
+  http.begin(BASE_URL "/get_circle");
+
   Serial.println("Connecting to get_circle");
   int httpCode = http.GET();
   if (httpCode > 0) {
@@ -194,6 +201,8 @@ void state_sse_connect() {
       state = STATE_SSE_STREAM;
       read_interval = 50;
       next_read = millis() + read_interval;
+    } else {
+      Serial.printf("HTTPCode is %d\n", httpCode);
     }
   } else {
     Serial.printf("[HTTP] GET... failed, error: %s\n",
@@ -214,6 +223,7 @@ void state_sse_stream() {
     int loop = 50;
     for (; client.available() < bufLen; loop--) {
       if (loop == 0) {
+        Serial.println("Didn't get any bytes after 500ms - reconnecting");
         state = STATE_SSE_CONNECT;
         return;
       }
@@ -256,7 +266,25 @@ void state_sse_stream() {
   }
 }
 
-void state_get_request() {
+void state_post_connect() {
+  http.begin(BASE_URL "/api/get_circle");
+  http.setReuse(true);
+
+  Serial.println("Connecting to /api/get_circle");
+  int httpCode = http.POST("");
+  if (httpCode > 0) {
+
+    if (httpCode == HTTP_CODE_OK) {
+      client = http.getStream();
+      state = STATE_POST_REQUEST;
+    }
+  } else {
+    Serial.printf("[HTTP] POST... failed, error: %s\n",
+                  http.errorToString(httpCode).c_str());
+  }
+}
+
+void state_post_request() {
   unsigned long start = millis();
   int httpCode = http.POST(String(""));
   // Serial.printf("[HTTP] POST... code: %d\n", httpCode);
@@ -272,34 +300,35 @@ void state_get_request() {
       show_LEDs(payload.c_str() + 1);
     }
   } else {
-    Serial.printf("[HTTP] GET... failed, error: %s\n",
+    Serial.printf("[HTTP] POST... failed, error: %s\n",
                   http.errorToString(httpCode).c_str());
-    http.begin(BASE_URL "api/get_circle");
-    http.setReuse(true);
+
+    state = STATE_POST_CONNECT;
+    return;
   }
 
   // http.end();
 
   unsigned long stop = millis();
-  Serial.printf("GET request duration: %ld..%ld = %ld\n", start, stop, stop - start);
+  Serial.printf("POST request duration: %ld..%ld = %ld\n", start, stop, stop - start);
   stop = millis();
   if (stop < start + 100) {
     delay(100 - (stop - start));
   }
-
-  state = STATE_BUTTON;
 }
 
-void state_button() {
+void fetch_button() {
   if (M5.Btn.read() == 1) {
-    http.begin(BASE_URL "api/game_reset");
+    http.begin(BASE_URL "/api/game_reset");
     led.setPixelColor(0, pixels.Color(32, 32, 0));
     led.show();
     int httpCode = http.POST(String(""));
     led.setPixelColor(0, pixels.Color(0, 32, 0));
     led.show();
     // Serial.printf("Sent reset with code: %d\n", httpCode);
-  }
+    request = (request + 1) % 3;
+    state = request_start();
 
-  state = STATE_GET_REQUEST;
+    delay(1000);
+  }
 }
