@@ -50,7 +50,9 @@ async fn main() {
     use std::time::Duration;
     use std::{convert::Infallible, time::SystemTime};
     use tokio::{
-        net::UdpSocket, sync::{broadcast::channel, mpsc}, task
+        net::UdpSocket,
+        sync::{broadcast::channel, mpsc},
+        task,
     };
 
     dioxus_logger::init(Level::INFO).expect("failed to init logger");
@@ -99,7 +101,9 @@ async fn main() {
 
     task::spawn(async move {
         loop {
-            let socket = UdpSocket::bind("0.0.0.0:8081").await.expect("Binding to port");
+            let socket = UdpSocket::bind("0.0.0.0:8081")
+                .await
+                .expect("Binding to port");
             // Receives a single datagram message on the socket. If `buf` is too small to hold
             // the message, it will be cut off.
             let mut buf = [0; 10];
@@ -108,9 +112,15 @@ async fn main() {
                 // tracing::info!("Got {} bytes from {src:?}, waiting for data", rcv);
                 let mut rx = rx.resubscribe();
                 if let Ok(answer) = rx.recv().await {
-                    // tracing::info!("Sending {} bytes through UDP", answer.len());
-                    if let Err(e) = socket.send_to(answer.as_bytes(), &src).await {
-                        tracing::error!("While sending back: {e:?}");
+                    // tracing::info!("Sending {} bytes through UDP", answer.as_bytes().len());
+                    for start in 0..(answer.len() / 1000 + 1) {
+                        let end = 1000.min(answer.len() - start * 1000 + 1);
+                        match socket.send_to(answer[start..end].as_bytes(), &src).await {
+                            Ok(_s) => {
+                                // tracing::info!("Sent {_s} bytes");
+                            }
+                            Err(e) => tracing::error!("While sending back: {e:?}"),
+                        }
                     }
                 }
             }

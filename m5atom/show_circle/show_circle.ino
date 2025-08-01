@@ -14,6 +14,7 @@
 #include "wifi.h"
 
 #define BASE_NAME "circle.gasser.blue"
+// #define BASE_NAME "192.168.0.146"
 #define BASE_URL "https://" BASE_NAME
 // #define BASE_NAME "192.168.178.70"
 // #define BASE_URL "http://" BASE_NAME ":8080"
@@ -26,7 +27,9 @@
 #define PIN_LED 27
 #define NUMPIXELS 292
 #define CIRCLE_SIZE 288
-#define FIRST_PIXEL 3
+#define FIRST_PIXEL 4
+
+#define UDP_WAIT_MS 50
 
 // Doesn't work because of __enable_irq()!
 // #include <PololuLedStrip.h>
@@ -84,7 +87,7 @@ bool http_begin(String url){
 int request_start() {
   Serial.printf("Request is %d\n", request);
   for (int i = 0; i < 3; i++) {
-    pixels.setPixelColor(i, pixels.ColorHSV(0x7fff, 0x7f, (request == i) << 7));
+    pixels.setPixelColor(i+1, pixels.ColorHSV(0x7fff, 0x7f, (request == i) << 7));
   }
 
   switch (request) {
@@ -182,10 +185,10 @@ void state_udp_read() {
   client_udp.write(0x30);
   client_udp.endPacket();
 
-  int count = 5;
+  int count = UDP_WAIT_MS / 10;
   while (client_udp.parsePacket() == 0) {
     if (count-- == 0) {
-      Serial.printf("%06ld (%03d): Didn't get a reply in 50ms\n", millis(), millis() - last);
+      Serial.printf("%06ld (%03d): Didn't get a reply in %dms\n", millis(), millis() - last, UDP_WAIT_MS);
       return;
     }
     delay(10);
@@ -193,8 +196,13 @@ void state_udp_read() {
   int bufLen = CIRCLE_SIZE * 6;
   char buf[bufLen + 1];
   int res = client_udp.read(buf, bufLen);
-  if (res != bufLen) {
-    Serial.printf("%06ld (%03d): Only got %d out of %d bytes\n", millis(), millis() - last);
+  delay(10);
+  if (client_udp.parsePacket() == 0) {
+    Serial.printf("%06ld (%03d): Didn't get a 2nd reply\n", millis(), millis() - last);
+  }
+  int res2 = client_udp.read(buf + res, bufLen - res);
+  if (res + res2 != bufLen) {
+    Serial.printf("%06ld (%03d): Only got %d out of %d bytes\n", millis(), millis() - last, res + res2, bufLen);
   } else {
     show_LEDs(buf);
   }
