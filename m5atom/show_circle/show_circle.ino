@@ -150,11 +150,19 @@ void loop() {
   fetch_button();
 }
 
-void show_LEDs(const char *hexes) {
+void show_LEDs_hex(const char *hexes) {
   for (int i = 0; i < CIRCLE_SIZE; i++) {
     pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + FIRST_PIXEL,
                          str2pix(hexes + i * 6));
     // pixels.gamma32(str2pix(hexes + i * 6)));
+  }
+  pixels.show();
+}
+
+void show_LEDs(uint8_t *rgb) {
+  for (int i = 0; i < CIRCLE_SIZE; i++) {
+    pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + FIRST_PIXEL,
+                         pixels.Color(rgb[i*3], rgb[i*3+1], rgb[i*3+2]));
   }
   pixels.show();
 }
@@ -193,16 +201,11 @@ void state_udp_read() {
     }
     delay(10);
   }
-  int bufLen = CIRCLE_SIZE * 6;
-  char buf[bufLen + 1];
+  int bufLen = CIRCLE_SIZE * 3;
+  uint8_t buf[bufLen + 1];
   int res = client_udp.read(buf, bufLen);
-  delay(10);
-  if (client_udp.parsePacket() == 0) {
-    Serial.printf("%06ld (%03d): Didn't get a 2nd reply\n", millis(), millis() - last);
-  }
-  int res2 = client_udp.read(buf + res, bufLen - res);
-  if (res + res2 != bufLen) {
-    Serial.printf("%06ld (%03d): Only got %d out of %d bytes\n", millis(), millis() - last, res + res2, bufLen);
+  if (res != bufLen) {
+    Serial.printf("%06ld (%03d): Only got %d out of %d bytes\n", millis(), millis() - last, res, bufLen);
   } else {
     show_LEDs(buf);
   }
@@ -296,7 +299,7 @@ void state_sse_stream() {
   // Serial.println((char*)buf);
   // Serial.println(hexes);
 
-  show_LEDs(hexes);
+  show_LEDs_hex(hexes);
 
   // buf[20] = 0;
   // Serial.printf("%s\n%s\n", buf, hexes);
@@ -329,7 +332,7 @@ void state_post_request() {
       // const char *hexes = payload.c_str() + 1;
       // Serial.println(payload);
       // Serial.println(hexes);
-      show_LEDs(payload.c_str() + 1);
+      show_LEDs_hex(payload.c_str() + 1);
     } else {
       Serial.printf("Wrong http code: %d\n", httpCode);
       state = STATE_POST_CONNECT;

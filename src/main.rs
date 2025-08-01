@@ -86,15 +86,18 @@ async fn main() {
     // Create a global instance of Platform, and pass it to the axum router as the context.
     let platform = server::Platform::new();
 
-    let (tx, rx) = channel::<String>(1);
+    let (tx, rx) = channel::<Vec<u8>>(1);
     let mut plat = platform.clone();
     task::spawn(async move {
         loop {
             sleep(Duration::from_millis(50)).await;
-
-            if let Err(e) = tx.send(plat.get_circle()) {
-                tracing::error!("While sending circle data: {e:?}");
-                continue;
+            match hex::decode(plat.get_circle()) {
+                Ok(leds) => {
+                    if let Err(e) = tx.send(leds) {
+                        tracing::error!("While sending circle data: {e:?}");
+                    }
+                }
+                Err(e) => tracing::error!("Couldn't convert leds to binary: {e:?}"),
             }
         }
     });
@@ -113,14 +116,14 @@ async fn main() {
                 let mut rx = rx.resubscribe();
                 if let Ok(answer) = rx.recv().await {
                     // tracing::info!("Sending {} bytes through UDP", answer.as_bytes().len());
-                    for start in 0..(answer.len() / 1000 + 1) {
-                        let end = 1000.min(answer.len() - start * 1000 + 1);
-                        match socket.send_to(answer[start..end].as_bytes(), &src).await {
-                            Ok(_s) => {
-                                // tracing::info!("Sent {_s} bytes");
-                            }
-                            Err(e) => tracing::error!("While sending back: {e:?}"),
+                    if answer.len() > 1450 {
+                        tracing::error!("Sending more than 1450 bytes over UDP works rarely!");
+                    }
+                    match socket.send_to(answer.as_slice(), &src).await {
+                        Ok(_s) => {
+                            // tracing::info!("Sent {_s} bytes");
                         }
+                        Err(e) => tracing::error!("While sending back: {e:?}"),
                     }
                 }
             }
