@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 
-pub const LED_COUNT: usize = 200;
+pub const LED_COUNT: usize = 288;
 
 #[derive(Display, EnumString, Clone, PartialEq, Debug, Deserialize, Serialize, Hash, Eq, Copy)]
 pub enum PlayColor {

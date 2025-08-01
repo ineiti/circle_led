@@ -25,7 +25,8 @@
 #define PIN_STRIP 26
 #define PIN_LED 27
 #define NUMPIXELS 292
-#define CIRCLE_SIZE 200
+#define CIRCLE_SIZE 288
+#define FIRST_PIXEL 3
 
 // Doesn't work because of __enable_irq()!
 // #include <PololuLedStrip.h>
@@ -64,18 +65,26 @@ void state_post_connect();
 #define STATE_POST_REQUEST 5
 void state_post_request();
 
-#define REQUEST_POST 0
+#define REQUEST_UDP 0
 #define REQUEST_SSE 1
-#define REQUEST_UDP 2
+#define REQUEST_POST 2
 
 int request = REQUEST_UDP;
 WiFiMulti wifiMulti;
 int state = 0;
 
+HTTPClient http;
+
+bool http_begin(String url){
+  http.setReuse(false);
+  http.end();
+  return http.begin(url, (const char*)NULL);
+}
+
 int request_start() {
   Serial.printf("Request is %d\n", request);
-  for (int i = 0; i < 3; i++){
-    pixels.setPixelColor(NUMPIXELS - 1 - i, pixels.ColorHSV(0x7fff, (request == i) << 7, 0x80));
+  for (int i = 0; i < 3; i++) {
+    pixels.setPixelColor(i, pixels.ColorHSV(0x7fff, 0x7f, (request == i) << 7));
   }
 
   switch (request) {
@@ -99,10 +108,10 @@ void setup() {
   pixels.begin();
   pixels.setBrightness(128);
   pixels.clear();
-  for (uint16_t i = 0; i < NUMPIXELS; i++) {
-    pixels.setPixelColor(i, pixels.gamma32(pixels.ColorHSV((i % 8) << 13, 0x7f + (i & 0x10) << 3, 0x7f + (i & 0x20) << 3)));
-  }
-  pixels.setPixelColor(NUMPIXELS - 1, 0);
+  // for (uint16_t i = 0; i < NUMPIXELS; i++) {
+  //   pixels.setPixelColor(i, pixels.gamma32(pixels.ColorHSV((i % 8) << 13, 0x7f + (i & 0x10) << 3, 0x7f + (i & 0x20) << 3)));
+  // }
+  // pixels.setPixelColor(NUMPIXELS - 1, 0);
 
   led.begin();
   led.setPixelColor(0, pixels.Color(32, 0, 0));
@@ -131,19 +140,21 @@ void loop() {
       break;
   }
 
+  // for (int i = 0; i < 8; i++) {
+  //   pixels.setPixelColor(NUMPIXELS - 4 - i, pixels.ColorHSV(0x7fff, 0x7f, (state == i) << 7));
+  // }
+
   fetch_button();
 }
 
 void show_LEDs(const char *hexes) {
   for (int i = 0; i < CIRCLE_SIZE; i++) {
-    pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + 1,
+    pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + FIRST_PIXEL,
                          str2pix(hexes + i * 6));
     // pixels.gamma32(str2pix(hexes + i * 6)));
   }
   pixels.show();
 }
-
-HTTPClient http;
 
 void state_wifi() {
   if ((wifiMulti.run() == WL_CONNECTED)) {
@@ -192,33 +203,47 @@ void state_udp_read() {
   last = millis();
 }
 
-WiFiClient client;
-
 unsigned long next_read;
 unsigned long read_interval;
 
 void state_sse_connect() {
-  http.begin(BASE_URL "/get_circle");
+  Serial.println("Requesting the SSE endpoint");
+  String url = String(BASE_URL "/get_circle");
+  http.setReuse(false);
+  http_begin(url);
 
-  Serial.println("Connecting to get_circle");
+  Serial.printf("Connecting to %s\n", url.c_str());
   int httpCode = http.GET();
   if (httpCode > 0) {
 
     if (httpCode == HTTP_CODE_OK) {
-      client = http.getStream();
-      state = STATE_SSE_STREAM;
       read_interval = REQUEST_INTERVAL;
       next_read = millis() + read_interval;
+      state = STATE_SSE_STREAM;
     } else {
-      Serial.printf("HTTPCode is %d\n", httpCode);
+      Serial.printf("Error code: %i\n", httpCode);
     }
   } else {
     Serial.printf("[HTTP] GET... failed, error: %s\n",
                   http.errorToString(httpCode).c_str());
   }
+
+  // Serial.println("Now for the api one");
+  // http_begin("https://circle.gasser.blue/api/get_circle");
+  // http.POST("");
+
+  // Serial.println("and for a post_request");
+  // state_post_request();
+
+  // Serial.println("Waiting");
+  // delay(10000);
+
+  // state = STATE_SSE_CONNECT;
 }
 
 void state_sse_stream() {
+  WiFiClient *client = http.getStreamPtr();
+
   unsigned long start = millis();
   if (start < next_read) {
     delay(next_read - start);
@@ -227,9 +252,9 @@ void state_sse_stream() {
   }
 
   int bufLen = CIRCLE_SIZE * 6 + 15;
-  if (client.available() == 0) {
-    int loop = REQUEST_INTERVAL;
-    for (; client.available() < bufLen; loop--) {
+  if (client->available() < bufLen) {
+    int loop = 10;
+    for (; client->available() < bufLen; loop--) {
       if (loop == 0) {
         Serial.println("Didn't get any bytes after 500ms - reconnecting");
         state = STATE_SSE_CONNECT;
@@ -238,21 +263,21 @@ void state_sse_stream() {
       delay(10);
       next_read += 10;
     }
-    Serial.printf("%05ld: No bytes available for %d loops\n", millis(), REQUEST_INTERVAL - loop);
+    Serial.printf("%05ld: No bytes available for %d loops\n", millis(), 10 - loop);
     read_interval += 5;
-  } else if (client.available() < 2 * bufLen) {
-    read_interval += 2;
-  } else if (client.available() < 3 * bufLen) {
+  } else if (client->available() < 2 * bufLen) {
+    // read_interval += 2;
+  } else if (client->available() < 3 * bufLen) {
     read_interval++;
     // } else if (client.available() < 4 * bufLen) {
     //   read_interval++;
-  } else if (client.available() >= 4 * bufLen && read_interval > 20) {
+  } else if (client->available() >= 4 * bufLen && read_interval > 20) {
     read_interval--;
   }
   next_read += read_interval;
 
   uint8_t buf[bufLen + 1];
-  int read = client.read(buf, bufLen);
+  int read = client->read(buf, bufLen);
   if (read != bufLen) {
     Serial.printf("%05ld: Only read %d instead of %d bytes\n", millis(), read, bufLen);
     return;
@@ -268,33 +293,24 @@ void state_sse_stream() {
   // buf[20] = 0;
   // Serial.printf("%s\n%s\n", buf, hexes);
 
-  Serial.printf("%05ld + %2d: %05ld, avail: %f\n", millis(), read_interval, next_read, client.available() / (float)bufLen);
-  if (client.available() == 0) {
+  Serial.printf("%05ld + %2d: %05ld, avail: %f\n", millis(), read_interval, next_read, client->available() / (float)bufLen);
+  if (client->available() == 0) {
     next_read += 10;
   }
 }
 
-void state_post_connect() {
-  http.begin(BASE_URL "/api/get_circle");
-  http.setReuse(true);
+void state_post_connect(){
+  http_begin(BASE_URL "/api/get_circle");
+  // http.POST("");
 
-  Serial.println("Connecting to /api/get_circle");
-  int httpCode = http.POST("");
-  if (httpCode > 0) {
-
-    if (httpCode == HTTP_CODE_OK) {
-      client = http.getStream();
-      state = STATE_POST_REQUEST;
-    }
-  } else {
-    Serial.printf("[HTTP] POST... failed, error: %s\n",
-                  http.errorToString(httpCode).c_str());
-  }
+  state = STATE_POST_REQUEST;
 }
 
 void state_post_request() {
+  http.setReuse(true);
+
   unsigned long start = millis();
-  int httpCode = http.POST(String(""));
+  int httpCode = http.POST("");
   // Serial.printf("[HTTP] POST... code: %d\n", httpCode);
 
   if (httpCode > 0) {
@@ -306,11 +322,14 @@ void state_post_request() {
       // Serial.println(payload);
       // Serial.println(hexes);
       show_LEDs(payload.c_str() + 1);
+    } else {
+      Serial.printf("Wrong http code: %d\n", httpCode);
+      state = STATE_POST_CONNECT;
+      return;
     }
   } else {
     Serial.printf("[HTTP] POST... failed, error: %s\n",
                   http.errorToString(httpCode).c_str());
-
     state = STATE_POST_CONNECT;
     return;
   }
@@ -327,7 +346,7 @@ void state_post_request() {
 
 void fetch_button() {
   if (M5.Btn.read() == 1) {
-    http.begin(BASE_URL "/api/game_reset");
+    http_begin(BASE_URL "/api/game_reset");
     led.setPixelColor(0, pixels.Color(32, 32, 0));
     led.show();
     int httpCode = http.POST(String(""));
