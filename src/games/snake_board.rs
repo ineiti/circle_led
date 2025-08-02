@@ -1,9 +1,136 @@
+use crate::{
+    common::{PlayColor, LED_COUNT},
+    display::{Blob, Display},
+    games::snake::SnakeGame,
+};
 use std::collections::HashMap;
 
-use crate::{
-    common::{Game, PlayColor, LED_COUNT},
-    display::Display,
-};
+#[cfg(debug_assertions)]
+const COUNTDOWN_PLAY: usize = 2;
+#[cfg(not(debug_assertions))]
+const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
+
+const COUNTDOWN_WINNER: usize = 100;
+
+pub enum MessagesSnake {
+    PlayerPos(PlayColor, usize),
+    PlayerClick(PlayColor),
+    Join(PlayColor),
+    GetState,
+    Reset,
+    Tick,
+}
+
+pub enum AnswerSnake {
+    Joined(bool),
+    State(SnakeGame),
+}
+
+#[derive(Debug)]
+pub struct PlatformSnake {
+    display: Display,
+    board: Option<Board>,
+    game: SnakeGame,
+    countdown: usize,
+}
+
+impl PlatformSnake {
+    pub fn new() -> Self {
+        Self {
+            display: Display::new(),
+            board: None,
+            game: SnakeGame::Idle,
+            countdown: 0,
+        }
+    }
+
+    pub fn get_circle(&self) -> String {
+        self.display.get_circle()
+    }
+
+    pub fn message(&mut self, msg: MessagesSnake) -> Option<AnswerSnake> {
+        match msg {
+            MessagesSnake::PlayerPos(player, pos) => self.player_pos(pos, player),
+            MessagesSnake::PlayerClick(play_color) => self.player_click(play_color),
+            MessagesSnake::Join(play_color) => return Some(self.game_join(play_color)),
+            MessagesSnake::GetState => return Some(AnswerSnake::State(self.game.clone())),
+            MessagesSnake::Reset => self.game_reset(),
+            MessagesSnake::Tick => self.tick(),
+        }
+        None
+    }
+
+    fn player_pos(&mut self, i: usize, c: PlayColor) {
+        self.board.as_mut().map(|b| b.player_pos(c, i));
+    }
+
+    fn player_click(&mut self, c: PlayColor) {
+        self.board.as_mut().map(|b| b.player_click(c));
+    }
+
+    fn game_join(&mut self, c: PlayColor) -> AnswerSnake {
+        match self.game.clone() {
+            SnakeGame::Idle => self.game = SnakeGame::Signup(vec![c]),
+            SnakeGame::Signup(vec) => {
+                if vec.contains(&c) {
+                    return AnswerSnake::Joined(false);
+                }
+                self.game = SnakeGame::Signup(vec![vec, vec![c]].concat());
+                self.countdown = COUNTDOWN_PLAY;
+            }
+            _ => {}
+        }
+        AnswerSnake::Joined(true)
+    }
+
+    fn game_reset(&mut self) {
+        self.game = SnakeGame::Idle;
+    }
+
+    fn tick(&mut self) {
+        self.display.tick();
+
+        match self.game.clone() {
+            SnakeGame::Idle => self.display.rainbow(),
+            SnakeGame::Signup(players) => {
+                if players.len() == 1 {
+                    self.countdown = COUNTDOWN_PLAY;
+                }
+                self.display.game_signup(players, self.countdown);
+            }
+            SnakeGame::Play(_) => {
+                self.display.flow();
+                if let Some(board) = self.board.as_mut() {
+                    self.game = board.tick(&mut self.display);
+                    if matches!(self.game, SnakeGame::Winner(_)) {
+                        self.countdown = COUNTDOWN_WINNER;
+                    }
+                }
+            }
+            SnakeGame::Winner(winner) => {
+                self.display.game_winner(winner, self.countdown);
+            }
+            SnakeGame::Draw => {
+                self.display.game_draw(self.countdown);
+            }
+        }
+
+        if self.countdown > 0 {
+            self.countdown -= 1;
+            if self.countdown == 0 {
+                self.game = match self.game.clone() {
+                    SnakeGame::Signup(players) => {
+                        self.board = Some(Board::new(players.clone()));
+                        self.display.reset();
+                        SnakeGame::Play(players)
+                    }
+                    _ => SnakeGame::Idle,
+                }
+            }
+        }
+        // tracing::debug!("New game state is: {:?} - {}", self.game, self.countdown);
+    }
+}
 
 const OBSTACLE_INTERVAL: usize = 50;
 const BONUS_INTERVAL: usize = 200;
@@ -15,8 +142,8 @@ const JUMP_COOLDOWN: usize = 80 * PLAYER_SPEED;
 #[derive(Debug)]
 pub struct Board {
     players: HashMap<PlayColor, Player>,
-    obstacles: Vec<Blob>,
-    boni: Vec<Blob>,
+    obstacles: Vec<Drop>,
+    boni: Vec<Drop>,
     obstacle: usize,
 }
 
@@ -52,7 +179,7 @@ impl Board {
         }
     }
 
-    pub fn tick(&mut self, display: &mut Display) -> Game {
+    pub fn tick(&mut self, display: &mut Display) -> SnakeGame {
         self.obstacles.retain_mut(|o| o.tick_visible());
         self.boni.retain_mut(|b| b.tick_visible());
         self.check_collision(vec![]);
@@ -77,22 +204,28 @@ impl Board {
         }
 
         if rand::random::<f32>() < 1. / (self.obstacle as f32 / 10.0) {
-            self.obstacles.push(Blob::rand());
+            self.obstacles.push(Drop::rand());
         }
         if rand::random::<f32>() < 1. / BONUS_INTERVAL as f32 {
-            self.boni.push(Blob::rand());
+            self.boni.push(Drop::rand());
         }
 
-        display.draw_players(self.players.values().cloned().collect());
-        display.draw_obstacles(self.obstacles.iter().map(|o| o.pos()).collect());
-        display.draw_boni(self.boni.iter().map(|b| b.pos()).collect());
+        display.draw_blobs(
+            self.players
+                .values()
+                .cloned()
+                .map(|p| Blob::Player(p))
+                .collect(),
+        );
+        display.draw_blobs(self.obstacles.iter().map(|o| o.obstacle()).collect());
+        display.draw_blobs(self.boni.iter().map(|b| b.bonus()).collect());
 
         if self.players.len() > 1 {
-            Game::Play(self.players.keys().cloned().collect())
+            SnakeGame::Play(self.players.keys().cloned().collect())
         } else if let Some(winner) = self.players.iter().next() {
-            Game::Winner(*winner.0)
+            SnakeGame::Winner(*winner.0)
         } else {
-            Game::Draw
+            SnakeGame::Draw
         }
     }
 
@@ -206,14 +339,14 @@ impl Position {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Blob {
+pub struct Drop {
     init: Position,
     counter: i32,
     direction: i32,
     clear: bool,
 }
 
-impl Blob {
+impl Drop {
     pub fn rand() -> Self {
         Self {
             init: Position(rand::random::<usize>() % LED_COUNT),
@@ -233,5 +366,13 @@ impl Blob {
             return true;
         }
         false
+    }
+
+    fn bonus(&self) -> Blob {
+        Blob::Bonus(self.pos())
+    }
+
+    fn obstacle(&self) -> Blob {
+        Blob::Obstacle(self.pos())
     }
 }

@@ -19,7 +19,8 @@ tracing = "0.1.41"
 axum = { version = "0.7.0", optional = true }
 dioxus-cli-config = { version = "*", optional = true }
 futures = { version = "0.3", optional = true }
-rand = { version = "0.8.5", optional = true }
+getrandom = { version = "0.2" }
+rand = { version = "0.8.5" }
 web-sys = { version = "0.3.64", features = [
     "Window",
     "Location",
@@ -30,10 +31,9 @@ hex = "0.4"
 
 [features]
 default = ["web"]
-web = ["dioxus/web", "dep:web-sys"]
+web = ["dioxus/web", "dep:web-sys", "getrandom/js"]
 server = [
     "dioxus/server",
-    "dep:rand",
     "dep:axum",
     "dep:tokio",
     "dep:dioxus-cli-config",

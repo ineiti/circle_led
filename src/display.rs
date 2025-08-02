@@ -1,6 +1,6 @@
 use crate::{
-    board::{Player, Position},
     common::{PlayColor, LED_COUNT},
+    games::snake_board::{Player, Position},
 };
 
 const BLINK_JUMP: usize = 5;
@@ -31,38 +31,9 @@ impl Display {
             .join("")
     }
 
-    pub fn draw_players(&mut self, players: Vec<Player>) {
-        let mut leds: Vec<LED> = (0..LED_COUNT).map(|_| LED::black()).collect();
-        for p in players {
-            if p.jump == 0 || (self.counter % BLINK_JUMP < BLINK_JUMP / 2) {
-                leds[p.pos.0].xor(p.color.into());
-            }
-            if p.jump == 0
-                && (p.jump_recover == 0 || (self.counter % BLINK_RECOVER < BLINK_RECOVER / 2))
-            {
-                for dist in 1..p.lifes * 2 {
-                    leds[p.pos.add(dist as i32).0].xor(LED::from(p.color).brightness(0.1));
-                    leds[p.pos.sub(dist as i32).0].xor(LED::from(p.color).brightness(0.1));
-                }
-            }
-        }
-
-        for (i, l) in leds.into_iter().enumerate() {
-            if !l.is_black() {
-                self.leds[i] = l;
-            }
-        }
-    }
-
-    pub fn draw_obstacles(&mut self, obstacles: Vec<Position>) {
-        for o in obstacles {
-            self.leds[o.0] = LED::white();
-        }
-    }
-
-    pub fn draw_boni(&mut self, boni: Vec<Position>) {
-        for b in boni {
-            self.leds[b.0] = LED::from_hex("22ff22");
+    pub fn draw_blobs(&mut self, blobs: Vec<Blob>) {
+        for blob in blobs {
+            blob.draw(self.counter, &mut self.leds);
         }
     }
 
@@ -150,6 +121,43 @@ impl Display {
     fn mean_leds(&self, i: usize) -> LED {
         let (p, n) = self.neighbors(i);
         self.leds[i].mean(vec![p, n])
+    }
+}
+
+pub enum Blob {
+    Player(Player),
+    Obstacle(Position),
+    Bonus(Position),
+}
+
+impl Blob {
+    pub fn draw(&self, counter: usize, leds: &mut Vec<LED>) {
+        match self {
+            Blob::Player(player) => Self::draw_player(player, counter, leds),
+            Blob::Obstacle(pos) => leds[pos.0] = LED::white(),
+            Blob::Bonus(pos) => leds[pos.0] = LED::from_hex("22ff22"),
+        }
+    }
+
+    fn draw_player(player: &Player, counter: usize, leds: &mut Vec<LED>) {
+        let mut tmp: Vec<LED> = (0..LED_COUNT).map(|_| LED::black()).collect();
+        if player.jump == 0 || (counter % BLINK_JUMP < BLINK_JUMP / 2) {
+            tmp[player.pos.0].xor(player.color.into());
+        }
+        if player.jump == 0
+            && (player.jump_recover == 0 || (counter % BLINK_RECOVER < BLINK_RECOVER / 2))
+        {
+            for dist in 1..player.lifes * 2 {
+                tmp[player.pos.add(dist as i32).0].xor(LED::from(player.color).brightness(0.1));
+                tmp[player.pos.sub(dist as i32).0].xor(LED::from(player.color).brightness(0.1));
+            }
+        }
+
+        for (i, l) in tmp.into_iter().enumerate() {
+            if !l.is_black() {
+                leds[i] = l;
+            }
+        }
     }
 }
 

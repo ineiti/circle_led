@@ -51,12 +51,3 @@ impl PlayColor {
         vec![Self::Red, Self::Green, Self::Blue, Self::Yellow, Self::Cyan, Self::Magenta]
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Game {
-    Idle,
-    Signup(Vec<PlayColor>),
-    Play(Vec<PlayColor>),
-    Winner(PlayColor),
-    Draw,
-}
