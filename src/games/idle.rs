@@ -1,17 +1,23 @@
-use crate::common::LED_COUNT;
+use crate::display::Display;
 
 #[derive(Debug)]
 pub struct PlatformIdle {
+    display: Display,
 }
 
 impl PlatformIdle {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            display: Display::new(),
+        }
     }
 
     pub fn get_circle(&self) -> String {
-        "000000".repeat(LED_COUNT).into()
+        self.display.get_circle()
     }
 
-    pub fn message(&mut self) {}
+    pub fn message(&mut self) {
+        self.display.tick();
+        self.display.rainbow();
+    }
 }

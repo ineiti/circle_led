@@ -1,11 +1,12 @@
 use dioxus::prelude::*;
 
-use crate::common::LED_COUNT;
+use crate::{Route, common::LED_COUNT};
 
 #[component]
 pub fn Drop() -> Element {
     rsx! {
         div {
+            Link {to: Route::Reset{}, style: "text-align: center; width: 100%;", "Home"}
             h1 {
                 "Idlying around"
             }

@@ -13,11 +13,11 @@
 // Don't check into github...
 #include "wifi.h"
 
-#define BASE_NAME "circle.gasser.blue"
-// #define BASE_NAME "192.168.0.146"
-#define BASE_URL "https://" BASE_NAME
+// #define BASE_NAME "circle.gasser.blue"
 // #define BASE_NAME "192.168.178.70"
-// #define BASE_URL "http://" BASE_NAME ":8080"
+#define BASE_NAME "192.168.0.161"
+// #define BASE_URL "https://" BASE_NAME
+#define BASE_URL "http://" BASE_NAME ":8080"
 #define BASE_UDP_PORT 8081
 
 #define REQUEST_FPS 20

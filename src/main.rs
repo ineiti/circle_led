@@ -20,6 +20,8 @@ mod server;
 enum Route {
     #[route("/")]
     Home {},
+    #[route("/reset")]
+    Reset {},
     #[route("/display")]
     Display {},
     #[route("/:..route")]
@@ -210,6 +212,20 @@ fn Idle(game: Signal<Game>) -> Element {
     }
 }
 
+#[component]
+fn Reset() -> Element {
+    use_future(|| async {
+        if let Err(e) = set_game(Game::Idle).await {
+            tracing::error!("{e:?}");
+        }
+        navigator().replace(Route::Home {});
+    });
+
+    rsx! {
+        Home{}
+    }
+}
+
 fn document_eval(parts: &[&str]) {
     document::eval(&parts.join("\n"));
 }
@@ -259,13 +275,13 @@ async fn get_circle() -> Result<String, ServerFnError> {
 }
 
 #[server(endpoint = "set_game")]
-async fn set_game(game: Game) -> Result<Game, ServerFnError> {
+pub async fn set_game(game: Game) -> Result<Game, ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.set_game(game))
 }
 
 #[server(endpoint = "get_game")]
-async fn get_game() -> Result<Game, ServerFnError> {
+pub async fn get_game() -> Result<Game, ServerFnError> {
     let FromContext(plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.get_game())
 }

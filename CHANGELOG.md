@@ -35,3 +35,5 @@ Questions:
 - UDP sends binary LED colors instead of hex encoded
 - 288 LEDs for the new wood-circle
 - Added choice in the beginning for different games
+- Going back from Snake::Join
+- Idling with snake

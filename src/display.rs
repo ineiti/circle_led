@@ -18,7 +18,7 @@ pub struct Display {
 impl Display {
     pub fn new() -> Self {
         Self {
-            leds: (0..LED_COUNT).map(|_| LED::white()).collect(),
+            leds: (0..LED_COUNT).map(|_| LED::black()).collect(),
             counter: 0,
         }
     }
@@ -40,10 +40,8 @@ impl Display {
     pub fn rainbow(&mut self) {
         self.leds[self.counter % LED_COUNT] = LED::from_hue((self.counter % 192) as u8);
         self.leds = (0..self.leds.len())
-            .map(|i| self.mean_leds(i).brightness(0.6))
+            .map(|i| self.mean_leds(i).brightness(0.8))
             .collect::<Vec<LED>>();
-        let first = self.leds.remove(0);
-        self.leds.push(first);
     }
 
     fn flow_brightness(&self) -> f32 {
@@ -134,7 +132,7 @@ impl Blob {
     pub fn draw(&self, counter: usize, leds: &mut Vec<LED>) {
         match self {
             Blob::Player(player) => Self::draw_player(player, counter, leds),
-            Blob::Obstacle(pos) => leds[pos.0] = LED::white(),
+            Blob::Obstacle(pos) => leds[pos.0] = LED::from_hex("ff2222"),
             Blob::Bonus(pos) => leds[pos.0] = LED::from_hex("22ff22"),
         }
     }

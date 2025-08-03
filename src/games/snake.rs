@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use crate::{
-    common::{PlayColor, LED_COUNT}, games::snake_board::{AnswerSnake, MessagesSnake}, server
+    common::{PlayColor, LED_COUNT},
+    games::snake_board::{AnswerSnake, MessagesSnake},
+    server, Route,
 };
 use async_std::task::sleep;
 use dioxus::prelude::*;
@@ -24,8 +26,6 @@ pub fn Snake() -> Element {
 
     use_future(move || async move {
         loop {
-            // current_player.set(Some(PlayColor::Red));
-            // game.set(Game::Play(vec![PlayColor::Red]));
             snake.set(snake_state().await.unwrap());
             sleep(Duration::from_millis(500)).await;
         }
@@ -33,7 +33,7 @@ pub fn Snake() -> Element {
 
     rsx! {
         div {
-            // Link {to: Route::Display{}, "Display"}
+            Link {to: Route::Reset{}, style: "text-align: center; width: 100%;", "Home"}
             match snake() {
                 SnakeGame::Idle => rsx!{Join{joined: vec![], current_player}},
                 SnakeGame::Signup(joined) => if current_player().is_some() {
@@ -169,7 +169,7 @@ fn Draw() -> Element {
 #[server(endpoint = "snake/state")]
 async fn snake_state() -> Result<SnakeGame, ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    if let Some(AnswerSnake::State(state)) = plat.snake_message(MessagesSnake::GetState){
+    if let Some(AnswerSnake::State(state)) = plat.snake_message(MessagesSnake::GetState) {
         Ok(state)
     } else {
         Err(ServerFnError::ServerError("didn't get state".into()))
@@ -179,7 +179,7 @@ async fn snake_state() -> Result<SnakeGame, ServerFnError> {
 #[server(endpoint = "snake/join")]
 async fn snake_join(c: PlayColor) -> Result<bool, ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    if let Some(AnswerSnake::Joined(joined)) = plat.snake_message(MessagesSnake::Join(c)){
+    if let Some(AnswerSnake::Joined(joined)) = plat.snake_message(MessagesSnake::Join(c)) {
         Ok(joined)
     } else {
         Err(ServerFnError::ServerError("didn't get join state".into()))
