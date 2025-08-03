@@ -1,39 +1,29 @@
+use std::time::Duration;
+
 use async_std::task::sleep;
 use common::LED_COUNT;
 use dioxus::prelude::*;
 use tracing::Level;
 
+use crate::common::Game;
+use crate::games::{drop::Drop, snake::Snake};
+
 mod common;
 
-mod games;
 mod display;
+mod games;
 #[cfg(feature = "server")]
 mod server;
-
-use crate::games::snake::Snake;
 
 #[derive(Debug, Clone, Routable, PartialEq)]
 #[rustfmt::skip]
 enum Route {
     #[route("/")]
     Home {},
-    #[route("/snake")]
-    Snake {},
-    #[route("/bowl")]
-    Bowl {},
     #[route("/display")]
     Display {},
     #[route("/:..route")]
     PageNotFound { route: Vec<String> },
-}
-
-#[component]
-fn PageNotFound(route: Vec<String>) -> Element {
-    rsx! {
-        h1 { "Page not found" }
-        p { "We are terribly sorry, but the page you requested doesn't exist." }
-        pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
-    }
 }
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
@@ -175,21 +165,46 @@ fn App() -> Element {
 
 #[component]
 fn Home() -> Element {
+    let mut game = use_signal(|| Game::Idle);
+
+    use_future(move || async move {
+        loop {
+            game.set(get_game().await.unwrap());
+            sleep(Duration::from_millis(500)).await;
+        }
+    });
+
     rsx! {
         div {
-            h1 {
-                "Welcome to the game!"
+            match game(){
+                Game::Idle => rsx!{Idle{game}},
+                Game::Snake => rsx!{Snake{}},
+                Game::Drop => rsx!{Drop{}}
             }
         }
     }
 }
 
 #[component]
-fn Bowl() -> Element {
+fn Idle(game: Signal<Game>) -> Element {
     rsx! {
         div {
-            h1 {
-                "Welcome to the bowl"
+            id: "color-grid",
+
+            button {onclick: move |_| async move {
+                if let Err(_) = set_game(Game::Snake).await{
+                };
+            },
+                class:"color-block", style:"background-color: #ffdddd;",
+                "Snake"
+            }
+
+            button {onclick: move |_| async move {
+                if let Err(_) = set_game(Game::Drop).await{
+                };
+            },
+                class:"color-block", style:"background-color: #ddffdd;",
+                "Drop"
             }
         }
     }
@@ -221,10 +236,19 @@ pub fn Display() -> Element {
     }
 }
 
+#[component]
+fn PageNotFound(route: Vec<String>) -> Element {
+    rsx! {
+        h1 { "Page not found" }
+        p { "We are terribly sorry, but the page you requested doesn't exist." }
+        pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
+    }
+}
+
 #[server(endpoint = "game_reset")]
 async fn game_reset() -> Result<(), ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    plat.snake_message(crate::games::snake_board::MessagesSnake::Reset);
+    plat.reset();
     Ok(())
 }
 
@@ -232,4 +256,16 @@ async fn game_reset() -> Result<(), ServerFnError> {
 async fn get_circle() -> Result<String, ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     Ok(plat.get_circle())
+}
+
+#[server(endpoint = "set_game")]
+async fn set_game(game: Game) -> Result<Game, ServerFnError> {
+    let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
+    Ok(plat.set_game(game))
+}
+
+#[server(endpoint = "get_game")]
+async fn get_game() -> Result<Game, ServerFnError> {
+    let FromContext(plat): FromContext<server::Platform> = extract().await?;
+    Ok(plat.get_game())
 }

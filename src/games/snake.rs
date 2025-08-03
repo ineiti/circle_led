@@ -19,14 +19,14 @@ pub enum SnakeGame {
 /// Main Choice
 #[component]
 pub fn Snake() -> Element {
-    let mut game = use_signal(|| SnakeGame::Idle);
+    let mut snake = use_signal(|| SnakeGame::Idle);
     let current_player: Signal<Option<PlayColor>> = use_signal(|| None);
 
     use_future(move || async move {
         loop {
             // current_player.set(Some(PlayColor::Red));
             // game.set(Game::Play(vec![PlayColor::Red]));
-            game.set(game_state().await.unwrap());
+            snake.set(snake_state().await.unwrap());
             sleep(Duration::from_millis(500)).await;
         }
     });
@@ -34,7 +34,7 @@ pub fn Snake() -> Element {
     rsx! {
         div {
             // Link {to: Route::Display{}, "Display"}
-            match game() {
+            match snake() {
                 SnakeGame::Idle => rsx!{Join{joined: vec![], current_player}},
                 SnakeGame::Signup(joined) => if current_player().is_some() {
                     rsx!{WaitJoin{ joined }}
@@ -61,7 +61,7 @@ fn Join(joined: Vec<PlayColor>, current_player: Signal<Option<PlayColor>>) -> El
 
     let join = move |player: PlayColor| async move {
         document::eval(include_str!("../../fullscreen.js"));
-        if game_join(player).await.unwrap() {
+        if snake_join(player).await.unwrap() {
             current_player.set(Some(player));
         }
     };
@@ -166,8 +166,8 @@ fn Draw() -> Element {
     }
 }
 
-#[server(endpoint = "game_state")]
-async fn game_state() -> Result<SnakeGame, ServerFnError> {
+#[server(endpoint = "snake/state")]
+async fn snake_state() -> Result<SnakeGame, ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     if let Some(AnswerSnake::State(state)) = plat.snake_message(MessagesSnake::GetState){
         Ok(state)
@@ -176,8 +176,8 @@ async fn game_state() -> Result<SnakeGame, ServerFnError> {
     }
 }
 
-#[server(endpoint = "game_join")]
-async fn game_join(c: PlayColor) -> Result<bool, ServerFnError> {
+#[server(endpoint = "snake/join")]
+async fn snake_join(c: PlayColor) -> Result<bool, ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     if let Some(AnswerSnake::Joined(joined)) = plat.snake_message(MessagesSnake::Join(c)){
         Ok(joined)
@@ -190,15 +190,15 @@ fn document_eval(parts: &[&str]) {
     document::eval(&parts.join("\n"));
 }
 
-#[server(endpoint = "player_pos")]
-async fn player_pos(i: usize, c: PlayColor) -> Result<(), ServerFnError> {
+#[server(endpoint = "snake/player_pos")]
+async fn snake_player_pos(i: usize, c: PlayColor) -> Result<(), ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     plat.snake_message(MessagesSnake::PlayerPos(c, i));
     Ok(())
 }
 
-#[server(endpoint = "player_click")]
-async fn player_click(c: PlayColor) -> Result<(), ServerFnError> {
+#[server(endpoint = "snake/player_click")]
+async fn snake_player_click(c: PlayColor) -> Result<(), ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
     plat.snake_message(MessagesSnake::PlayerClick(c));
     Ok(())

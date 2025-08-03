@@ -50,6 +50,7 @@ devbox shell -- dx serve
 
 # TODO
 
+- Add other games
 - Make timing independant of LED_COUNT
 
 # DONE

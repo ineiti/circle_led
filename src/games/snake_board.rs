@@ -17,7 +17,6 @@ pub enum MessagesSnake {
     PlayerClick(PlayColor),
     Join(PlayColor),
     GetState,
-    Reset,
     Tick,
 }
 
@@ -54,7 +53,6 @@ impl PlatformSnake {
             MessagesSnake::PlayerClick(play_color) => self.player_click(play_color),
             MessagesSnake::Join(play_color) => return Some(self.game_join(play_color)),
             MessagesSnake::GetState => return Some(AnswerSnake::State(self.game.clone())),
-            MessagesSnake::Reset => self.game_reset(),
             MessagesSnake::Tick => self.tick(),
         }
         None
@@ -81,10 +79,6 @@ impl PlatformSnake {
             _ => {}
         }
         AnswerSnake::Joined(true)
-    }
-
-    fn game_reset(&mut self) {
-        self.game = SnakeGame::Idle;
     }
 
     fn tick(&mut self) {

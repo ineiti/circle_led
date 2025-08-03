@@ -1,5 +1,5 @@
-const DATA_URL_POS = '/api/player_pos';
-const DATA_URL_CLICK = '/api/player_click';
+const DATA_URL_POS = '/api/snake/player_pos';
+const DATA_URL_CLICK = '/api/snake/player_click';
 const UPDATE_FREQUENCY = 20;
 // This is in pixels
 const LED_SIZE = 10;

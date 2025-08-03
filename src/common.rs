@@ -3,6 +3,13 @@ use strum_macros::{Display, EnumString};
 
 pub const LED_COUNT: usize = 288;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum Game {
+    Idle,
+    Snake,
+    Drop,
+}
+
 #[derive(Display, EnumString, Clone, PartialEq, Debug, Deserialize, Serialize, Hash, Eq, Copy)]
 pub enum PlayColor {
     Red,
