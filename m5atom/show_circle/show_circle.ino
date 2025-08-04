@@ -13,11 +13,11 @@
 // Don't check into github...
 #include "wifi.h"
 
-// #define BASE_NAME "circle.gasser.blue"
+#define BASE_NAME "circle.gasser.blue"
 // #define BASE_NAME "192.168.178.70"
-#define BASE_NAME "192.168.0.161"
-// #define BASE_URL "https://" BASE_NAME
-#define BASE_URL "http://" BASE_NAME ":8080"
+// #define BASE_NAME "192.168.0.161"
+#define BASE_URL "https://" BASE_NAME
+// #define BASE_URL "http://" BASE_NAME ":8080"
 #define BASE_UDP_PORT 8081
 
 #define REQUEST_FPS 20
@@ -29,7 +29,7 @@
 #define CIRCLE_SIZE 288
 #define FIRST_PIXEL 4
 
-#define UDP_WAIT_MS 50
+#define UDP_WAIT_MS 20
 
 // Doesn't work because of __enable_irq()!
 // #include <PololuLedStrip.h>
@@ -161,7 +161,9 @@ void show_LEDs_hex(const char *hexes) {
 
 void show_LEDs(uint8_t *rgb) {
   for (int i = 0; i < CIRCLE_SIZE; i++) {
-    pixels.setPixelColor(((i + CIRCLE_SIZE / 2) % CIRCLE_SIZE) + FIRST_PIXEL,
+    // int j = (i + CIRCLE_SIZE / 2) % CIRCLE_SIZE;
+    int j = CIRCLE_SIZE - i;
+    pixels.setPixelColor(j + FIRST_PIXEL,
                          pixels.Color(rgb[i*3], rgb[i*3+1], rgb[i*3+2]));
   }
   pixels.show();

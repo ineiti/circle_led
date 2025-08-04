@@ -1,10 +1,10 @@
 use crate::{
-    common::{PlayColor, LED_COUNT},
+    common::{PlayColor, FREQUENCY, LED_COUNT},
     games::snake_board::{Player, Position},
 };
 
-const BLINK_JUMP: usize = 5;
-const BLINK_RECOVER: usize = 10;
+const BLINK_JUMP: usize = FREQUENCY / 4;
+const BLINK_RECOVER: usize = BLINK_JUMP * 2;
 const FLOW_PERIOD: usize = 100;
 const FLOW_MERGE: usize = FLOW_PERIOD / 3;
 const FLOWS: [f32; 8] = [0.9, 0.8, 0.6, 0.4, 1.0, 0.3, 0.6, 0.7];
@@ -73,6 +73,10 @@ impl Display {
             .collect();
     }
 
+    pub fn clear(&mut self) {
+        self.leds.iter_mut().for_each(|led| *led = LED::black());
+    }
+
     pub fn game_winner(&mut self, winner: PlayColor, counter: usize) {
         let bright = ((counter % 10) as f32 - 5.0).abs() / 5.0;
         self.leds = (0..LED_COUNT)
@@ -126,6 +130,7 @@ pub enum Blob {
     Player(Player),
     Obstacle(Position),
     Bonus(Position),
+    Drop(Position, PlayColor, f32),
 }
 
 impl Blob {
@@ -134,6 +139,12 @@ impl Blob {
             Blob::Player(player) => Self::draw_player(player, counter, leds),
             Blob::Obstacle(pos) => leds[pos.0] = LED::from_hex("ff2222"),
             Blob::Bonus(pos) => leds[pos.0] = LED::from_hex("22ff22"),
+            Blob::Drop(pos, play_color, speed) => {
+                for i in 0..(3 + speed.abs() as usize) {
+                    leds[(pos.0 + i) % LED_COUNT] = (*play_color).into();
+                    leds[(pos.0 + LED_COUNT - i) % LED_COUNT] = (*play_color).into();
+                }
+            }
         }
     }
 

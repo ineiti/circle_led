@@ -3,6 +3,8 @@ use strum_macros::{Display, EnumString};
 
 pub const LED_COUNT: usize = 288;
 
+pub const FREQUENCY: usize = 50;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Game {
     Idle,
@@ -29,7 +31,8 @@ impl PlayColor {
             PlayColor::Yellow => "ffff00",
             PlayColor::Cyan => "00ffff",
             PlayColor::Magenta => "ff00ff",
-        }.into()
+        }
+        .into()
     }
 
     pub fn to_hex_pastel(&self) -> String {
@@ -40,21 +43,18 @@ impl PlayColor {
             PlayColor::Yellow => "ffff88",
             PlayColor::Cyan => "88ffff",
             PlayColor::Magenta => "ff88ff",
-        }.into()
+        }
+        .into()
     }
 
-    pub fn to_string(&self) -> String {
-        match self{
-            PlayColor::Red => "Rouge",
-            PlayColor::Green => "Vert",
-            PlayColor::Blue => "Bleue",
-            PlayColor::Yellow => "Jaune",
-            PlayColor::Cyan => "Cyan",
-            PlayColor::Magenta => "Rose",
-        }.into()
-    }
-
-    pub fn all() -> Vec<PlayColor>{
-        vec![Self::Red, Self::Green, Self::Blue, Self::Yellow, Self::Cyan, Self::Magenta]
+    pub fn all() -> Vec<PlayColor> {
+        vec![
+            Self::Red,
+            Self::Green,
+            Self::Blue,
+            Self::Yellow,
+            Self::Cyan,
+            Self::Magenta,
+        ]
     }
 }

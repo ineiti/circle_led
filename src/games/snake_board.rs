@@ -1,16 +1,16 @@
 use crate::{
-    common::{PlayColor, LED_COUNT},
+    common::{PlayColor, FREQUENCY, LED_COUNT},
     display::{Blob, Display},
     games::snake::SnakeGame,
 };
 use std::collections::HashMap;
 
 #[cfg(debug_assertions)]
-const COUNTDOWN_PLAY: usize = 2;
+const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
 #[cfg(not(debug_assertions))]
 const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
 
-const COUNTDOWN_WINNER: usize = 100;
+const COUNTDOWN_WINNER: usize = 4 * FREQUENCY;
 
 pub enum MessagesSnake {
     PlayerPos(PlayColor, usize),
@@ -126,12 +126,12 @@ impl PlatformSnake {
     }
 }
 
-const OBSTACLE_INTERVAL: usize = 50;
-const BONUS_INTERVAL: usize = 200;
+const OBSTACLE_INTERVAL: usize = FREQUENCY * 3;
+const BONUS_INTERVAL: usize = FREQUENCY * 10;
 const LIFE_INIT: usize = 5;
-const PLAYER_SPEED: usize = 3;
-const JUMP_DURATION: usize = 40 * PLAYER_SPEED;
-const JUMP_COOLDOWN: usize = 80 * PLAYER_SPEED;
+const PLAYER_SPEED: usize = 60 / FREQUENCY;
+const JUMP_DURATION: usize = 4 * FREQUENCY;
+const JUMP_COOLDOWN: usize = 8 * FREQUENCY;
 
 #[derive(Debug)]
 pub struct Board {
@@ -351,7 +351,8 @@ impl Drop {
     }
 
     pub fn pos(&self) -> Position {
-        self.init.add(self.counter * self.direction)
+        self.init
+            .add(self.counter * self.direction * 20 / FREQUENCY as i32)
     }
 
     pub fn tick_visible(&mut self) -> bool {

@@ -1,5 +1,5 @@
 const DATA_URL = '/api/get_circle';
-const UPDATE_FREQUENCY = 20;
+const UPDATE_FREQUENCY = 50;
 // This is in pixels
 const LED_SIZE = 10;
 

@@ -5,9 +5,9 @@ use std::{
 };
 
 use crate::{
-    common::Game,
+    common::{Game, FREQUENCY},
     games::{
-        drop::PlatformDrop,
+        drop::{AnswerDrop, MessagesDrop, PlatformDrop},
         idle::PlatformIdle,
         snake_board::{AnswerSnake, MessagesSnake, PlatformSnake},
     },
@@ -35,7 +35,7 @@ impl Platform {
 
         thread::spawn(move || loop {
             game.lock().unwrap().tick();
-            thread::sleep(Duration::from_millis(50));
+            thread::sleep(Duration::from_millis(1000 / FREQUENCY as u64));
         });
 
         out
@@ -49,7 +49,9 @@ impl Platform {
         self.game.lock().unwrap().snake_message(msg)
     }
 
-    pub fn reset(&mut self) {}
+    pub fn drop_message(&mut self, msg: MessagesDrop) -> Option<AnswerDrop> {
+        self.game.lock().unwrap().drop_message(msg)
+    }
 
     pub fn get_game(&self) -> Game {
         self.game.lock().unwrap().get_game()
@@ -83,13 +85,23 @@ impl GamePlatform {
             GamePlatform::Snake(platform_snake) => {
                 platform_snake.message(MessagesSnake::Tick);
             }
-            GamePlatform::Drop(platform_drop) => platform_drop.message(),
+            GamePlatform::Drop(platform_drop) => {
+                platform_drop.message(MessagesDrop::Tick);
+            }
         }
     }
 
     fn snake_message(&mut self, msg: MessagesSnake) -> Option<AnswerSnake> {
         if let GamePlatform::Snake(snake) = self {
             snake.message(msg)
+        } else {
+            None
+        }
+    }
+
+    fn drop_message(&mut self, msg: MessagesDrop) -> Option<AnswerDrop> {
+        if let GamePlatform::Drop(drop) = self {
+            drop.message(msg)
         } else {
             None
         }

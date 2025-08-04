@@ -100,6 +100,13 @@ html {
     height: 100%;
 }
 
+#drop-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    height: 100vh;
+}
+
 #color-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

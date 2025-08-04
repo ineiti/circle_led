@@ -59,6 +59,8 @@ async fn main() {
         task::spawn(async move {
             let mut start = SystemTime::now();
             loop {
+                use crate::common::FREQUENCY;
+
                 if tx
                     .send(Ok(Event::default().data(platform.get_circle())))
                     .await
@@ -67,7 +69,7 @@ async fn main() {
                     tracing::error!("Streaming aborted");
                     return;
                 }
-                sleep(Duration::from_millis(50) - start.elapsed().unwrap()).await;
+                sleep(Duration::from_millis(1000 / FREQUENCY as u64) - start.elapsed().unwrap()).await;
                 tracing::info!("Elapsed: {:?}", start.elapsed());
                 start = SystemTime::now();
             }
@@ -84,7 +86,9 @@ async fn main() {
     let mut plat = platform.clone();
     task::spawn(async move {
         loop {
-            sleep(Duration::from_millis(50)).await;
+            use crate::common::FREQUENCY;
+
+            sleep(Duration::from_millis(1000 / FREQUENCY as u64)).await;
             match hex::decode(plat.get_circle()) {
                 Ok(leds) => {
                     if let Err(e) = tx.send(leds) {
@@ -244,7 +248,7 @@ pub fn Display() -> Element {
             class: "centered-div",
             div { id: "circle-container" }
             button {
-                onclick: move |_| async move { game_reset().await.unwrap();},
+                onclick: move |_| async move { navigator().push(Route::Reset{});},
                 class: "centered-div",
                 "Reset"
             }
@@ -259,13 +263,6 @@ fn PageNotFound(route: Vec<String>) -> Element {
         p { "We are terribly sorry, but the page you requested doesn't exist." }
         pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
     }
-}
-
-#[server(endpoint = "game_reset")]
-async fn game_reset() -> Result<(), ServerFnError> {
-    let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    plat.reset();
-    Ok(())
 }
 
 #[server(endpoint = "get_circle")]
