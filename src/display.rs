@@ -1,3 +1,5 @@
+use std::f32::consts::TAU;
+
 use crate::{
     common::{PlayColor, FREQUENCY, LED_COUNT},
     games::snake_board::{Player, Position},
@@ -12,7 +14,7 @@ const FLOWS: [f32; 8] = [0.9, 0.8, 0.6, 0.4, 1.0, 0.3, 0.6, 0.7];
 #[derive(Debug)]
 pub struct Display {
     leds: Vec<LED>,
-    counter: usize,
+    pub counter: usize,
 }
 
 impl Display {
@@ -104,6 +106,15 @@ impl Display {
     pub fn reset(&mut self) {
         self.counter = 0;
         self.game_draw(0);
+    }
+
+    pub fn shine(&mut self, phi: f32) {
+        for led in &mut self.leds {
+            if led.is_black() {
+                *led = LED::from_hex("888888");
+            }
+            *led = led.brightness((phi * TAU).sin() + 1.);
+        }
     }
 
     fn neighbors(&self, i: usize) -> (LED, LED) {

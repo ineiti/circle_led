@@ -6,11 +6,18 @@ use crate::{
 use std::collections::HashMap;
 
 #[cfg(debug_assertions)]
-const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
+const COUNTDOWN_PLAY: usize = 2;
 #[cfg(not(debug_assertions))]
 const COUNTDOWN_PLAY: usize = crate::common::LED_COUNT;
 
 const COUNTDOWN_WINNER: usize = 4 * FREQUENCY;
+const OBSTACLE_INTERVAL: usize = FREQUENCY * 3;
+const OBSTACLE_INCREASE_SEC: usize = 10;
+const BONUS_INTERVAL: usize = FREQUENCY * 10;
+const LIFE_INIT: usize = 5;
+const PLAYER_SPEED: usize = 60 / FREQUENCY;
+const JUMP_DURATION: usize = 4 * FREQUENCY;
+const JUMP_COOLDOWN: usize = 8 * FREQUENCY;
 
 pub enum MessagesSnake {
     PlayerPos(PlayColor, usize),
@@ -126,13 +133,6 @@ impl PlatformSnake {
     }
 }
 
-const OBSTACLE_INTERVAL: usize = FREQUENCY * 3;
-const BONUS_INTERVAL: usize = FREQUENCY * 10;
-const LIFE_INIT: usize = 5;
-const PLAYER_SPEED: usize = 60 / FREQUENCY;
-const JUMP_DURATION: usize = 4 * FREQUENCY;
-const JUMP_COOLDOWN: usize = 8 * FREQUENCY;
-
 #[derive(Debug)]
 pub struct Board {
     players: HashMap<PlayColor, Player>,
@@ -193,8 +193,9 @@ impl Board {
             self.check_collision(players_ignore);
         }
 
-        if self.obstacle > 5 {
-            self.obstacle -= 1;
+        let speed_up = display.counter % (FREQUENCY * OBSTACLE_INCREASE_SEC);
+        if speed_up == 0 && self.obstacle > 10 {
+            self.obstacle = self.obstacle * 2 / 3;
         }
 
         if rand::random::<f32>() < 1. / (self.obstacle as f32 / 10.0) {
@@ -204,6 +205,7 @@ impl Board {
             self.boni.push(Drop::rand());
         }
 
+        display.clear();
         display.draw_blobs(
             self.players
                 .values()
@@ -213,6 +215,9 @@ impl Board {
         );
         display.draw_blobs(self.obstacles.iter().map(|o| o.obstacle()).collect());
         display.draw_blobs(self.boni.iter().map(|b| b.bonus()).collect());
+        if speed_up < FREQUENCY {
+            display.shine(speed_up as f32 / FREQUENCY as f32 * 2.0);
+        }
 
         if self.players.len() > 1 {
             SnakeGame::Play(self.players.keys().cloned().collect())
