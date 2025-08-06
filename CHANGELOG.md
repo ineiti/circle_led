@@ -37,3 +37,5 @@ Questions:
 - Added choice in the beginning for different games
 - Going back from Snake::Join
 - Idling with snake
+- Snake: Changing obstacle frequencies in a more linear way with announcements
+- Snake: change the player interface

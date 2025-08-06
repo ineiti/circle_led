@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{
     common::{PlayColor, LED_COUNT},
-    games::snake_board::{AnswerSnake, MessagesSnake},
+    games::snake_board::{AnswerSnake, MessagesSnake, TurnDir},
     server, Route,
 };
 use async_std::task::sleep;
@@ -117,10 +117,48 @@ pub fn Play(players: Vec<PlayColor>, player: PlayColor) -> Element {
         ]);
     });
 
+    async fn turn(player: PlayColor, dir: Option<TurnDir>) {
+        if let Err(e) = snake_player_turn(player, dir).await {
+            tracing::error!("While calling player_turn: {e:?}");
+        }
+    }
+
     rsx! {
         div {
-            class: "centered-div",
-            div { id: "circle-container" }
+            class: "snakeContainer",
+            style: "background-color: #{player.to_hex_pastel()};",
+            div {
+                class: "snakeDivision",
+                onmousedown: move |_| async move {turn(player, Some(TurnDir::Left)).await},
+                onmouseout: move |_| async move {turn(player, None).await},
+                onmouseup: move |_| async move {turn(player, None).await},
+                span {
+                    class: "snakeSymbol",
+                    "↺"
+                }
+            }
+            div {
+                class: "snakeDivision snakeJump",
+                onclick: move |_| async move {
+                    if let Err(e) = snake_player_jump(player).await{
+                        tracing::error!("While calling player_jump: {e:?}");
+                    }
+                },
+                span {
+                    class: "snakeSymbol",
+                    "↑"
+                }
+            }
+            div {
+                class: "snakeDivision",
+                onmousedown: move |_| async move {turn(player, Some(TurnDir::Right)).await},
+                onmouseout: move |_| async move {turn(player, None).await},
+                onmouseup: move |_| async move {turn(player, None).await},
+                span {
+                    class: "snakeSymbol",
+                    "↻"
+                }
+            }
         }
     }
 }
@@ -190,16 +228,16 @@ fn document_eval(parts: &[&str]) {
     document::eval(&parts.join("\n"));
 }
 
-#[server(endpoint = "snake/player_pos")]
-async fn snake_player_pos(i: usize, c: PlayColor) -> Result<(), ServerFnError> {
+#[server(endpoint = "snake/player_turn")]
+async fn snake_player_turn(player: PlayColor, dir: Option<TurnDir>) -> Result<(), ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    plat.snake_message(MessagesSnake::PlayerPos(c, i));
+    plat.snake_message(MessagesSnake::PlayerTurn(player, dir));
     Ok(())
 }
 
-#[server(endpoint = "snake/player_click")]
-async fn snake_player_click(c: PlayColor) -> Result<(), ServerFnError> {
+#[server(endpoint = "snake/player_jump")]
+async fn snake_player_jump(player: PlayColor) -> Result<(), ServerFnError> {
     let FromContext(mut plat): FromContext<server::Platform> = extract().await?;
-    plat.snake_message(MessagesSnake::PlayerClick(c));
+    plat.snake_message(MessagesSnake::PlayerJump(player));
     Ok(())
 }

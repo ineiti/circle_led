@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     common::{PlayColor, FREQUENCY, LED_COUNT},
     display::{Blob, Display},
@@ -20,11 +22,17 @@ const JUMP_DURATION: usize = 4 * FREQUENCY;
 const JUMP_COOLDOWN: usize = 8 * FREQUENCY;
 
 pub enum MessagesSnake {
-    PlayerPos(PlayColor, usize),
-    PlayerClick(PlayColor),
+    PlayerTurn(PlayColor, Option<TurnDir>),
+    PlayerJump(PlayColor),
     Join(PlayColor),
     GetState,
     Tick,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum TurnDir {
+    Right,
+    Left,
 }
 
 pub enum AnswerSnake {
@@ -56,8 +64,8 @@ impl PlatformSnake {
 
     pub fn message(&mut self, msg: MessagesSnake) -> Option<AnswerSnake> {
         match msg {
-            MessagesSnake::PlayerPos(player, pos) => self.player_pos(pos, player),
-            MessagesSnake::PlayerClick(play_color) => self.player_click(play_color),
+            MessagesSnake::PlayerTurn(player, dir) => self.player_turn(player, dir),
+            MessagesSnake::PlayerJump(play_color) => self.player_click(play_color),
             MessagesSnake::Join(play_color) => return Some(self.game_join(play_color)),
             MessagesSnake::GetState => return Some(AnswerSnake::State(self.game.clone())),
             MessagesSnake::Tick => self.tick(),
@@ -65,8 +73,8 @@ impl PlatformSnake {
         None
     }
 
-    fn player_pos(&mut self, i: usize, c: PlayColor) {
-        self.board.as_mut().map(|b| b.player_pos(c, i));
+    fn player_turn(&mut self, c: PlayColor, d: Option<TurnDir>) {
+        self.board.as_mut().map(|b| b.player_turn(c, d));
     }
 
     fn player_click(&mut self, c: PlayColor) {
@@ -161,9 +169,9 @@ impl Board {
         }
     }
 
-    pub fn player_pos(&mut self, c: PlayColor, i: usize) {
+    pub fn player_turn(&mut self, c: PlayColor, d: Option<TurnDir>) {
         if let Some(player) = self.players.get_mut(&c) {
-            player.set_pos(i);
+            player.set_turn(d);
         }
     }
 
@@ -255,7 +263,7 @@ impl Board {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Player {
     pub pos: Position,
-    dest: Position,
+    turn: Option<TurnDir>,
     pub color: PlayColor,
     pub lifes: usize,
     pub jump: usize,
@@ -267,7 +275,7 @@ impl Player {
         let pos = Position(pos);
         Self {
             pos,
-            dest: pos,
+            turn: None,
             color,
             lifes,
             jump: 0,
@@ -275,14 +283,14 @@ impl Player {
         }
     }
 
-    fn set_pos(&mut self, dest: usize) {
-        self.dest = Position(dest);
+    fn set_turn(&mut self, dir: Option<TurnDir>) {
+        self.turn = dir;
     }
 
     fn tick(&mut self, players: Vec<Player>) {
-        if self.dest != self.pos {
+        if let Some(dir) = self.turn.as_ref() {
             let others: Vec<&Player> = players.iter().filter(|p| p.color != self.color).collect();
-            let new_pos = if self.pos.direction(self.dest) > 0 {
+            let new_pos = if dir == &TurnDir::Left {
                 self.pos.add(-1)
             } else {
                 self.pos.add(1)
